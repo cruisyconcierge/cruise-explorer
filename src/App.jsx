@@ -18,43 +18,37 @@ import {
   Search,
   Menu,
   Mail,
-  Map,
-  Info
+  Globe,
+  Star
 } from 'lucide-react';
 
-// --- Configuration ---
-// VERIFY: Check if your CPT slug is 'cruise' or 'cruises' in CPT UI and update this URL accordingly.
-const WP_CRUISE_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/cruise?_embed&per_page=100'; 
-const WP_ACTIVITY_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/itineraries?_embed&per_page=100'; 
-const WP_AMAZON_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/amazon_essentials?_embed&per_page=100';
+// --- CONFIGURATION ---
+// Based on your CPT UI dump:
+const WP_API_BASE = 'https://cruisytravel.com/wp-json/wp/v2';
+const ENDPOINTS = {
+  CRUISES: `${WP_API_BASE}/cruises?_embed&per_page=100`, // Plural slug usually
+  ACTIVITIES: `${WP_API_BASE}/itineraries?_embed&per_page=100`,
+  ESSENTIALS: `${WP_API_BASE}/amazon_essential?_embed&per_page=100` // Singular slug based on "Edit Amazon Essential"
+};
+
 const BRAND_COLOR = '#34a4b8';
 
-// --- Static Data ---
+// --- STATIC DATA ---
 const CRUISE_LINES = [
-  { id: 'virgin', name: 'Virgin Voyages', slogan: 'Adults Only • Rebellious Luxury', color: '#E10A1D', image: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&q=80&w=600' },
-  { id: 'royal', name: 'Royal Caribbean', slogan: 'Innovation at Sea', color: '#005DAA', image: 'https://images.unsplash.com/photo-1559599238-308793637120?auto=format&fit=crop&q=80&w=600' },
-  { id: 'carnival', name: 'Carnival', slogan: 'Choose Fun', color: '#E31D2B', image: 'https://images.unsplash.com/photo-1599640845513-26224d7ce400?auto=format&fit=crop&q=80&w=600' },
-  { id: 'celebrity', name: 'Celebrity', slogan: 'Exquisite Modern Luxury', color: '#1A1F71', image: 'https://images.unsplash.com/photo-1605281317010-fe5ffe79b9b7?auto=format&fit=crop&q=80&w=600' },
-  { id: 'norwegian', name: 'Norwegian', slogan: 'Feel Free', color: '#00A3E0', image: 'https://images.unsplash.com/photo-1621255535314-d830504746d8?auto=format&fit=crop&q=80&w=600' },
-  { id: 'disney', name: 'Disney', slogan: 'Magic at Sea', color: '#192C5E', image: 'https://images.unsplash.com/photo-1512101137015-8495a8647565?auto=format&fit=crop&q=80&w=600' }
+  { id: 'virgin', name: 'Virgin Voyages', color: '#E10A1D', logo: 'V' },
+  { id: 'royal', name: 'Royal Caribbean', color: '#005DAA', logo: 'R' },
+  { id: 'carnival', name: 'Carnival', color: '#E31D2B', logo: 'C' },
+  { id: 'celebrity', name: 'Celebrity', color: '#1A1F71', logo: 'X' },
+  { id: 'norwegian', name: 'Norwegian', color: '#00A3E0', logo: 'N' },
+  { id: 'disney', name: 'Disney', color: '#192C5E', logo: 'D' },
+  { id: 'msc', name: 'MSC Cruises', color: '#003366', logo: 'M' },
+  { id: 'viking', name: 'Viking', color: '#9d8b70', logo: 'Vk' },
+  { id: 'princess', name: 'Princess', color: '#005696', logo: 'P' }
 ];
 
-const MOCK_ITINERARIES = [
-  { id: 101, lineId: 'virgin', title: 'Dominican Daze', nights: 5, port: 'Miami', season: 'Year Round', price: 1450, ship: 'Scarlet Lady', regions: ['Caribbean'], image: '🌴', description: 'Escape to the Caribbean on an adults-only voyage.', itinerary: ['Miami', 'Sea Day', 'Puerto Plata', 'Sea Day', 'Bimini', 'Miami'], affiliateLink: '#' },
-];
-
-const MOCK_ESSENTIALS = [
-  { id: 'e1', title: 'Waterproof Phone Pouch', price: '9.99', image: '📱', link: '#' },
-  { id: 'e2', title: 'Magnetic Hooks (Heavy Duty)', price: '12.99', image: '🧲', link: '#' },
-];
-
-const MOCK_ACTIVITIES = [
-  { id: 'a1', title: 'Blue Lagoon Island Beach Day', port: 'Nassau', price: 89, image: '🏝️', link: '#' },
-];
-
-// --- Helper Functions ---
+// --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
-  if (!name) return 'virgin';
+  if (!name) return 'other';
   const lower = name.toLowerCase();
   if (lower.includes('virgin')) return 'virgin';
   if (lower.includes('royal')) return 'royal';
@@ -62,294 +56,207 @@ const getLineId = (name) => {
   if (lower.includes('celebrity')) return 'celebrity';
   if (lower.includes('norwegian') || lower.includes('ncl')) return 'norwegian';
   if (lower.includes('disney')) return 'disney';
-  return 'virgin';
+  if (lower.includes('msc')) return 'msc';
+  if (lower.includes('viking')) return 'viking';
+  if (lower.includes('princess')) return 'princess';
+  return 'other';
 };
 
-// --- Components ---
+const formatPrice = (price) => {
+  if (!price) return '0';
+  // Remove $ if user entered it in ACF, ensure it's a number string
+  return price.toString().replace('$', '');
+};
 
-const CruiseShipIcon = ({ className, count }) => (
-  <div className={`relative ${className}`}>
-    <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-       <path d="M0 80 Q 25 70 50 80 T 100 80 V 100 H 0 Z" fill="#3b82f6" opacity="0.8" />
-       <path d="M0 85 Q 25 75 50 85 T 100 85 V 100 H 0 Z" fill="#2563eb" opacity="0.8" />
-       <path d="M15 60 L 25 80 H 90 L 95 60 Z" fill="#f8fafc" stroke="#475569" strokeWidth="2" />
-       <path d="M20 65 L 88 65" stroke="#34a4b8" strokeWidth="3" />
-       <rect x="30" y="45" width="55" height="15" fill="#f1f5f9" stroke="#475569" strokeWidth="2" />
-       <rect x="35" y="35" width="40" height="10" fill="#f1f5f9" stroke="#475569" strokeWidth="2" />
-       <path d="M45 35 L 42 20 H 50 L 53 35 Z" fill="#ef4444" />
-       <path d="M65 35 L 62 25 H 70 L 73 35 Z" fill="#ef4444" />
-       <circle cx="35" cy="52" r="2" fill="#34a4b8" />
-       <circle cx="45" cy="52" r="2" fill="#34a4b8" />
-       <circle cx="55" cy="52" r="2" fill="#34a4b8" />
-       <circle cx="65" cy="52" r="2" fill="#34a4b8" />
-       <circle cx="75" cy="52" r="2" fill="#34a4b8" />
-    </svg>
-    {count > 0 && (
-      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm z-10 animate-pulse">
-        {count}
-      </span>
-    )}
+// --- COMPONENTS ---
+
+// 1. Sidebar Navigation
+const Sidebar = ({ activeTab, setActiveTab, cartCount }) => (
+  <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-col h-full fixed left-0 top-0 z-50 border-r border-slate-800">
+    <div className="p-6 flex items-center gap-3">
+      <div className="w-10 h-10 bg-[#34a4b8] rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-900/50">
+        <Anchor className="w-6 h-6" />
+      </div>
+      <div>
+        <h1 className="font-bold text-lg leading-none tracking-wide">CRUISY</h1>
+        <span className="text-[10px] uppercase tracking-widest text-slate-400">Explorer</span>
+      </div>
+    </div>
+
+    <nav className="flex-1 px-4 space-y-2 mt-4">
+      <button onClick={() => setActiveTab('explore')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'explore' ? 'bg-[#34a4b8] text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+        <Ship className="w-5 h-5" />
+        <span className="font-medium text-sm">Voyages</span>
+      </button>
+      <button onClick={() => setActiveTab('essentials')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'essentials' ? 'bg-[#34a4b8] text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+        <ShoppingBag className="w-5 h-5" />
+        <span className="font-medium text-sm">Essentials</span>
+      </button>
+      <button onClick={() => setActiveTab('list')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'list' ? 'bg-[#34a4b8] text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+        <div className="relative">
+          <ListPlus className="w-5 h-5" />
+          {cartCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900"></span>}
+        </div>
+        <span className="font-medium text-sm">My List ({cartCount})</span>
+      </button>
+    </nav>
+
+    <div className="p-4 border-t border-slate-800">
+      <a href="https://cruisytravel.com" className="flex items-center gap-2 text-xs text-slate-400 hover:text-[#34a4b8] transition-colors">
+        <ArrowLeft className="w-3 h-3" /> Back to CruisyTravel.com
+      </a>
+    </div>
+  </aside>
+);
+
+// 2. Mobile Navigation
+const MobileNav = ({ activeTab, setActiveTab, cartCount }) => (
+  <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 text-white border-t border-slate-800 z-50 flex justify-around p-2 pb-safe">
+    <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'explore' ? 'text-[#34a4b8]' : 'text-slate-500'}`}>
+      <Ship className="w-6 h-6" />
+      <span className="text-[10px] mt-1">Voyages</span>
+    </button>
+    <button onClick={() => setActiveTab('essentials')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'essentials' ? 'text-[#34a4b8]' : 'text-slate-500'}`}>
+      <ShoppingBag className="w-6 h-6" />
+      <span className="text-[10px] mt-1">Shop</span>
+    </button>
+    <button onClick={() => setActiveTab('list')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'list' ? 'text-[#34a4b8]' : 'text-slate-500'}`}>
+      <div className="relative">
+        <ListPlus className="w-6 h-6" />
+        {cartCount > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900"></span>}
+      </div>
+      <span className="text-[10px] mt-1">List</span>
+    </button>
   </div>
 );
 
-const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail }) => {
-  const cruises = savedItems.filter(i => i.type === 'cruise');
-  const activities = savedItems.filter(i => i.type === 'activity');
-  const essentials = savedItems.filter(i => i.type === 'essential');
+// 3. Detail Modal
+const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
+  if (!item) return null;
+
+  // Find Brand Color
+  const brand = type === 'cruise' ? CRUISE_LINES.find(b => b.id === item.lineId) : null;
+  const accentColor = brand ? brand.color : BRAND_COLOR;
+
+  // Filter relevant activities for this cruise (Port Matching)
+  const relevantActivities = type === 'cruise' && activities 
+    ? activities.filter(act => {
+        // Check if activity port matches any port in cruise itinerary
+        // Note: Itinerary in WP comes as "ports_of_call" string usually
+        if (!item.itinerary || !act.port) return false;
+        const portString = Array.isArray(item.itinerary) ? item.itinerary.join(' ') : item.itinerary;
+        return portString.toLowerCase().includes(act.port.toLowerCase());
+      })
+    : [];
 
   return (
-    <div className={`fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
-        <div>
-          <h2 className="font-russo text-2xl">My Voyage List</h2>
-          <p className="text-xs text-slate-400">Save now, book later.</p>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {savedItems.length === 0 && (
-          <div className="text-center py-10 opacity-50 flex flex-col items-center">
-            <Anchor className="w-12 h-12 mb-2 text-teal-500" />
-            <p>Your list is empty.</p>
-            <p className="text-sm">Start exploring to add items!</p>
-          </div>
-        )}
-
-        {cruises.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><Ship className="w-4 h-4" /> Voyages</h3>
-            <div className="space-y-3">
-              {cruises.map(item => (
-                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group">
-                  <div className="flex gap-3">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm overflow-hidden">
-                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
-                    </div>
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
-                      <p className="text-xs text-slate-500">{item.ship}</p>
-                      <a href={item.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-teal-600 hover:underline mt-1 block">Book Now &rarr;</a>
-                    </div>
-                    <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activities.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><Palmtree className="w-4 h-4" /> Experiences</h3>
-            <div className="space-y-3">
-              {activities.map(item => (
-                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm">{item.image}</div>
-                   <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
-                      <p className="text-xs text-slate-500">{item.port} • ${item.price}</p>
-                   </div>
-                   <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {essentials.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Essentials</h3>
-            <div className="space-y-3">
-              {essentials.map(item => (
-                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm">{item.image}</div>
-                   <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs font-bold text-slate-500">${item.price}</span>
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] uppercase font-bold text-orange-500 hover:underline">Buy on Amazon</a>
-                      </div>
-                   </div>
-                   <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4 border-t border-slate-100 bg-slate-50">
-        <button onClick={onEmail} className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
-           <Mail className="w-4 h-4" /> Email My List
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const DetailModal = ({ cruise, brand, activities, onClose, onSave, isSaved, onSaveActivity, savedActivityIds }) => {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, itinerary, experiences, gear
-
-  if (!cruise || !brand) return null;
-
-  // Filter unique ports
-  const uniquePorts = [...new Set(cruise.itinerary.filter(stop => 
-    !stop.toLowerCase().includes('sea day') && 
-    !stop.toLowerCase().includes('embark') &&
-    !stop.toLowerCase().includes('disembark')
-  ))];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-white w-full max-w-5xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col md:flex-row relative">
-        <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/50 hover:bg-white rounded-full transition-colors"><X className="w-6 h-6 text-slate-800" /></button>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div className="bg-slate-50 w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative" onClick={e => e.stopPropagation()}>
         
-        {/* Left Side: Visuals & Pricing (Fixed) */}
-        <div className="w-full md:w-1/3 bg-slate-100 relative flex flex-col">
-          <div className="relative flex-grow">
-            <div className="absolute inset-0">
-               {cruise.realImage ? <img src={cruise.realImage} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-9xl">{cruise.image}</div>}
-               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+        {/* Close Button */}
+        <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
+
+        {/* Media Column */}
+        <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-200">
+          {item.image ? (
+            <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl text-slate-400">📷</div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
+          
+          <div className="absolute bottom-0 left-0 w-full p-6 text-white">
+            {type === 'cruise' && <span className="px-2 py-1 rounded bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider mb-2 inline-block border border-white/10">{item.ship}</span>}
+            <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-2">{item.title}</h2>
+            
+            <div className="flex gap-3 mt-4">
+              <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-white text-slate-900 rounded-xl font-bold text-center text-sm hover:bg-slate-100 transition-colors shadow-lg">
+                View Deal <ExternalLink className="w-3 h-3 inline ml-1" />
+              </a>
+              <button onClick={() => onSave(item)} className={`px-4 rounded-xl border border-white/30 hover:bg-white/10 flex items-center justify-center text-white transition-colors ${isSaved ? 'bg-teal-500/50 border-teal-500' : ''}`}>
+                {isSaved ? <Check className="w-5 h-5" /> : <ListPlus className="w-5 h-5" />}
+              </button>
             </div>
-            <div className="absolute bottom-6 left-6 text-white pr-6">
-              <h2 className="font-russo text-3xl leading-none mb-1 shadow-black drop-shadow-md">{cruise.title}</h2>
-              <p className="text-lg opacity-90">{cruise.ship}</p>
-            </div>
-          </div>
-          <div className="bg-slate-900 text-white p-6">
-             <div className="flex justify-between items-center mb-4">
-               <div>
-                 <p className="text-[10px] uppercase font-bold text-slate-400">Starting From</p>
-                 <p className="text-3xl font-russo">${cruise.price}</p>
-               </div>
-               <div className="text-right">
-                 <p className="text-[10px] uppercase font-bold text-slate-400">Duration</p>
-                 <p className="font-bold flex items-center justify-end gap-1"><Sun className="w-4 h-4 text-orange-400" /> {cruise.nights} Nights</p>
-               </div>
-             </div>
-             <div className="flex flex-col gap-2">
-                <a href={cruise.affiliateLink} target="_blank" rel="noopener noreferrer" className="w-full py-3 rounded-xl font-bold text-white text-center shadow-lg hover:brightness-110 transition-all" style={{ backgroundColor: brand.color }}>
-                  View Deal <ExternalLink className="w-4 h-4 inline ml-1" />
-                </a>
-                <button onClick={() => onSave(cruise)} className={`w-full py-3 rounded-xl font-bold border border-white/20 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm`}>
-                  {isSaved ? <><Check className="w-4 h-4" /> Saved</> : <><ListPlus className="w-4 h-4" /> Save to List</>}
-                </button>
-             </div>
           </div>
         </div>
 
-        {/* Right Side: Tabbed Content */}
-        <div className="w-full md:w-2/3 flex flex-col bg-white">
-          {/* Internal Navigation */}
-          <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar">
-             {[
-               { id: 'overview', label: 'Overview', icon: Info },
-               { id: 'itinerary', label: 'Itinerary', icon: Map },
-               { id: 'experiences', label: 'Port Experiences', icon: Palmtree },
-               { id: 'gear', label: 'Gear', icon: ShoppingBag }
-             ].map(tab => (
-               <button 
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id)}
-                 className={`flex items-center gap-2 px-6 py-4 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id ? 'border-teal-500 text-teal-600 bg-teal-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-               >
-                 <tab.icon className="w-4 h-4" /> {tab.label}
-               </button>
-             ))}
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-8">
-             {activeTab === 'overview' && (
-               <div className="space-y-6 animate-fade-in">
-                  <div className="flex flex-wrap gap-3">
-                     <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {cruise.season}</div>
-                     <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" /> {cruise.port}</div>
+        {/* Content Column */}
+        <div className="w-full md:w-7/12 flex flex-col bg-white h-full overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+            
+            {/* Cruise Specific Details */}
+            {type === 'cruise' && (
+              <>
+                <div className="flex items-center gap-6 text-sm border-b border-slate-100 pb-6">
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase">Price</p>
+                    <p className="font-bold text-slate-900 text-lg">${item.price}</p>
                   </div>
-                  <div className="prose prose-sm text-slate-600">
-                     <h3 className="font-russo text-lg text-slate-800 mb-2">About this Voyage</h3>
-                     <p dangerouslySetInnerHTML={{ __html: cruise.description }}></p>
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase">Duration</p>
+                    <p className="font-bold text-slate-900 flex items-center gap-1"><Sun className="w-4 h-4 text-orange-400" /> {item.nights || 7} Nights</p>
                   </div>
-               </div>
-             )}
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase">Vibe</p>
+                    <p className="font-bold text-slate-900">{item.vibe || 'Relaxing'}</p>
+                  </div>
+                </div>
 
-             {activeTab === 'itinerary' && (
-               <div className="space-y-6 animate-fade-in">
-                  <h3 className="font-russo text-lg text-slate-800">Daily Schedule</h3>
-                  <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
-                    {cruise.itinerary.map((stop, i) => (
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg mb-3">About this Voyage</h3>
+                  <div className="prose prose-sm text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.description || 'No description available.' }}></div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg mb-4">Itinerary</h3>
+                  <div className="space-y-4 relative pl-4 border-l-2 border-slate-100">
+                    {Array.isArray(item.itinerary) && item.itinerary.map((port, i) => (
                       <div key={i} className="relative">
-                         <div className="absolute -left-[29px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: brand.color }}></div>
-                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Day {i + 1}</p>
-                         <p className="text-slate-800 font-bold text-lg">{stop}</p>
+                        <div className="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: accentColor }}></div>
+                        <p className="text-sm font-medium text-slate-800">{port}</p>
                       </div>
                     ))}
                   </div>
-               </div>
-             )}
+                </div>
 
-             {activeTab === 'experiences' && (
-               <div className="space-y-8 animate-fade-in">
-                  <div className="bg-teal-50 p-4 rounded-xl border border-teal-100 text-sm text-teal-800 mb-6">
-                     Discover things to do in each port of call. Add them to your list to plan your perfect shore day.
-                  </div>
-                  
-                  {uniquePorts.map(port => {
-                     // Filter activities for this specific port
-                     const portActivities = activities.filter(a => a.port && a.port.toLowerCase().includes(port.toLowerCase()));
-                     
-                     return (
-                        <div key={port} className="border-b border-slate-100 pb-6 last:border-0">
-                           <h4 className="font-russo text-lg text-slate-800 mb-4 flex items-center gap-2"><Anchor className="w-4 h-4 text-slate-400" /> {port}</h4>
-                           {portActivities.length > 0 ? (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                 {portActivities.map(act => {
-                                    const isActSaved = savedActivityIds.includes(act.id);
-                                    return (
-                                       <div key={act.id} className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-md transition-all group">
-                                          <div className="flex justify-between items-start mb-2">
-                                             <div className="text-2xl bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center">{act.image}</div>
-                                             <button onClick={() => onSaveActivity(act)} className={`p-1.5 rounded-full transition-colors ${isActSaved ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-teal-100 hover:text-teal-600'}`}>
-                                                {isActSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
-                                             </button>
-                                          </div>
-                                          <h5 className="font-bold text-slate-800 text-sm leading-tight mb-2 line-clamp-2">{act.title}</h5>
-                                          <div className="flex justify-between items-center text-xs">
-                                             <span className="font-bold text-slate-500">${act.price}</span>
-                                             <a href={act.link} target="_blank" rel="noopener noreferrer" className="text-teal-600 font-bold hover:underline">Book &rarr;</a>
-                                          </div>
-                                       </div>
-                                    );
-                                 })}
-                              </div>
-                           ) : (
-                              <p className="text-sm text-slate-400 italic">No specific activities listed for this port yet.</p>
-                           )}
-                        </div>
-                     );
-                  })}
-               </div>
-             )}
+                {/* Experiences Section */}
+                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                   <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
+                      <Palmtree className="w-5 h-5 text-teal-600" /> Experiences in Port
+                   </h3>
+                   {relevantActivities.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                         {relevantActivities.map(act => (
+                            <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex items-center gap-3 group">
+                               <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                               <div className="min-w-0">
+                                  <p className="font-bold text-slate-800 text-xs truncate group-hover:text-teal-600">{act.title}</p>
+                                  <p className="text-[10px] text-slate-500 uppercase">{act.port}</p>
+                               </div>
+                            </a>
+                         ))}
+                      </div>
+                   ) : (
+                      <p className="text-sm text-slate-400 italic">No specific shore excursions found for these ports in our database.</p>
+                   )}
+                </div>
+              </>
+            )}
 
-             {activeTab === 'gear' && (
-               <div className="animate-fade-in">
-                  <h3 className="font-russo text-lg text-slate-800 mb-4">Packing Essentials</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                     {cruise.amazonJson && cruise.amazonJson.map((item, idx) => (
-                        <a key={idx} href={item.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:shadow-md transition-all flex items-center gap-3">
-                           <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-2xl">🛍️</div>
-                           <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-700 truncate">{item.title || 'Travel Item'}</p>
-                              <p className="text-[10px] text-orange-500 font-bold mt-0.5">Amazon</p>
-                           </div>
-                        </a>
-                     ))}
-                     {(!cruise.amazonJson || cruise.amazonJson.length === 0) && (
-                        <p className="col-span-2 text-sm text-slate-400">Check the main Essentials tab for general packing lists.</p>
-                     )}
+            {/* Essential Specific Details */}
+            {type === 'essential' && (
+               <div>
+                  <div className="flex items-center justify-between mb-6">
+                     <span className="text-2xl font-bold text-slate-900">${item.price}</span>
+                     <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold uppercase">Amazon Essential</span>
                   </div>
+                  <p className="text-slate-600 mb-6">This item has been curated by our travel experts as a must-have for your next cruise vacation.</p>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-center transition-colors">
+                     Buy on Amazon
+                  </a>
                </div>
-             )}
+            )}
+
           </div>
         </div>
       </div>
@@ -357,395 +264,305 @@ const DetailModal = ({ cruise, brand, activities, onClose, onSave, isSaved, onSa
   );
 };
 
-export default function CruiseExplorer() {
+// --- MAIN APP ---
+
+export default function CruiseApp() {
+  const [activeTab, setActiveTab] = useState('explore');
   const [selectedBrand, setSelectedBrand] = useState(null);
-  const [internalTab, setInternalTab] = useState('voyages'); // voyages, essentials
-  const [showList, setShowList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Data
-  const [cruises, setCruises] = useState(MOCK_ITINERARIES);
-  const [activities, setActivities] = useState(MOCK_ACTIVITIES);
-  const [essentials, setEssentials] = useState(MOCK_ESSENTIALS);
-  const [savedItems, setSavedItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [cruises, setCruises] = useState([]);
+  const [essentials, setEssentials] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-  const [viewingCruise, setViewingCruise] = useState(null);
+  // User State
+  const [savedItems, setSavedItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null); // For modal
 
-  // --- Init ---
+  // --- INITIALIZATION ---
   useEffect(() => {
+    // 1. Load LocalStorage
     try {
-      const saved = localStorage.getItem('cruisy_voyage_list');
+      const saved = localStorage.getItem('cruisy_list_v2');
       if (saved) setSavedItems(JSON.parse(saved));
-    } catch(e) {}
+    } catch (e) { console.error('LS Error', e); }
 
+    // 2. Fetch Data
     const fetchData = async () => {
-      setIsLoading(true);
+      setLoading(true);
       try {
-        // Fetch Cruises
-        const cRes = await fetch(WP_CRUISE_API_URL);
-        if (cRes.ok) {
-          const data = await cRes.json();
-          const mapped = data.map(post => {
-            // Extract nights from title (e.g., "7-Night...")
-            const title = post.title.rendered;
-            const nightsMatch = title.match(/(\d+)-Night/i);
-            const nights = nightsMatch ? parseInt(nightsMatch[1]) : 7;
+        const [cruiseRes, essentialRes, activityRes] = await Promise.all([
+          fetch(ENDPOINTS.CRUISES),
+          fetch(ENDPOINTS.ESSENTIALS),
+          fetch(ENDPOINTS.ACTIVITIES)
+        ]);
 
-            // Handle Ports (Map 'ports_of_call' ACF to itinerary list)
-            const ports = post.acf?.ports_of_call ? post.acf.ports_of_call.split(',').map(s => s.trim()) : [];
-            const startPort = ports.length > 0 ? ports[0] : 'See Details';
-
-            // Handle Destination/Regions (Array or String)
-            let regionList = ['Caribbean'];
-            if (post.acf?.destination) {
-                if (Array.isArray(post.acf.destination)) {
-                    regionList = post.acf.destination;
-                } else {
-                    regionList = [post.acf.destination];
-                }
-            }
-
-            return {
-              id: post.id,
-              type: 'cruise',
-              lineId: getLineId(post.acf?.cruise_line),
-              title: title,
-              ship: post.acf?.ship_name || 'Cruise Ship',
-              nights: nights,
-              port: startPort,
-              price: post.acf?.price || 0,
-              image: '🚢',
-              realImage: post.acf?.main_image?.url || post.acf?.main_image || post._embedded?.['wp:featuredmedia']?.[0]?.source_url,
-              description: post.acf?.description || '',
-              itinerary: ports,
-              affiliateLink: post.acf?.affiliate_link || '#',
-              amazonJson: post.acf?.amazon_json ? JSON.parse(post.acf.amazon_json) : [],
-              rating: post.acf?.rating,
-              season: 'Year Round', // Default since not in ACF list provided
-              regions: regionList
-            };
-          });
-          setCruises(mapped);
+        if (cruiseRes.ok) {
+          const data = await cruiseRes.json();
+          setCruises(data.map(p => ({
+            id: p.id,
+            type: 'cruise',
+            title: p.title.rendered,
+            lineId: getLineId(p.acf?.cruise_line),
+            ship: p.acf?.ship_name || 'Cruise Ship',
+            price: formatPrice(p.acf?.price),
+            nights: p.acf?.nights || '7',
+            itinerary: p.acf?.ports_of_call ? p.acf.ports_of_call.split(',').map(s => s.trim()) : [],
+            image: p.acf?.main_image?.url || p.acf?.main_image || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
+            link: p.acf?.affiliate_link || '#',
+            description: p.acf?.description || '',
+            vibe: p.acf?.travel_vibe,
+            rating: p.acf?.rating
+          })));
         }
 
-        // Fetch Activities (Itineraries CPT)
-        const aRes = await fetch(WP_ACTIVITY_API_URL);
-        if (aRes.ok) {
-          const data = await aRes.json();
-          const mapped = data.map(post => ({
-            id: post.id,
-            type: 'activity',
-            title: post.title.rendered,
-            port: post.acf?.port_name || 'Destination',
-            price: post.acf?.price || 50,
-            image: '🌴',
-            link: post.link
-          }));
-          setActivities(mapped);
-        }
-
-        // Fetch Amazon Essentials
-        const eRes = await fetch(WP_AMAZON_API_URL);
-        if (eRes.ok) {
-          const data = await eRes.json();
-          const mapped = data.map(post => ({
-            id: post.id,
+        if (essentialRes.ok) {
+          const data = await essentialRes.json();
+          setEssentials(data.map(p => ({
+            id: p.id,
             type: 'essential',
-            title: post.title.rendered,
-            price: post.acf?.price || '0.00',
-            link: post.acf?.affiliate_link || '#',
-            image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '🛍️', 
-            isRealImage: !!post._embedded?.['wp:featuredmedia']?.[0]?.source_url
-          }));
-          setEssentials(mapped);
+            title: p.title.rendered,
+            price: formatPrice(p.acf?.price),
+            link: p.acf?.affiliate_link || '#',
+            image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null
+          })));
+        }
+
+        if (activityRes.ok) {
+          const data = await activityRes.json();
+          setActivities(data.map(p => ({
+            id: p.id,
+            type: 'activity',
+            title: p.title.rendered,
+            port: p.acf?.port_name || 'Unknown',
+            price: formatPrice(p.acf?.price),
+            image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
+            link: p.link // Or ACF link if you have one
+          })));
         }
 
       } catch (err) {
-        console.warn('API Error', err);
+        console.error("API Error", err);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
+  // --- PERSISTENCE ---
   useEffect(() => {
-    localStorage.setItem('cruisy_voyage_list', JSON.stringify(savedItems));
+    localStorage.setItem('cruisy_list_v2', JSON.stringify(savedItems));
   }, [savedItems]);
 
-  // --- Handlers ---
-  const handleSelectBrand = (brand) => {
-    setSelectedBrand(brand);
-    setInternalTab('voyages');
-    window.scrollTo(0, 0);
-  };
-
-  const handleBack = () => {
-    setSelectedBrand(null);
-  };
-
+  // --- ACTIONS ---
   const toggleSave = (item) => {
     const exists = savedItems.find(i => i.id === item.id);
-    if (exists) {
-      setSavedItems(savedItems.filter(i => i.id !== item.id));
-    } else {
-      setSavedItems([...savedItems, { ...item, savedAt: new Date() }]);
-    }
+    if (exists) setSavedItems(savedItems.filter(i => i.id !== item.id));
+    else setSavedItems([...savedItems, item]);
   };
 
   const handleEmail = () => {
-    const subject = "My Cruise Explorer List";
-    const body = JSON.stringify(savedItems, null, 2); 
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("Here is my saved cruise list.")}`;
+    const body = savedItems.map(i => `${i.title} - ${i.type === 'cruise' ? i.ship : '$'+i.price}`).join('\n');
+    window.location.href = `mailto:?subject=My Cruisy List&body=${encodeURIComponent(body)}`;
   };
 
-  // --- Filters ---
+  // --- FILTERS ---
   const filteredCruises = cruises.filter(c => {
     if (selectedBrand && c.lineId !== selectedBrand.id) return false;
-    if (searchQuery && !c.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return c.title.toLowerCase().includes(q) || c.ship.toLowerCase().includes(q);
+    }
     return true;
   });
 
-  // --- Render ---
   return (
-    <div className="min-h-screen bg-slate-900 font-roboto text-slate-100 overflow-x-hidden selection:bg-teal-500 selection:text-white">
+    <div className="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
       
-      {/* Styles & Animation */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Russo+One&display=swap');
-        .font-russo { font-family: 'Russo One', sans-serif; }
-        .font-roboto { font-family: 'Roboto', sans-serif; }
+      {/* --- SIDEBAR --- */}
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={savedItems.length} />
+
+      {/* --- CONTENT AREA --- */}
+      <main className="flex-1 ml-0 md:ml-64 relative flex flex-col h-full overflow-hidden">
         
-        .bg-ocean-gradient {
-          background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
-        }
-        
-        .glass-panel {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-          100% { transform: translateY(0px); }
-        }
-        .animate-float { animation: float 4s ease-in-out infinite; }
-        .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
-        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
-
-      {/* --- Header --- */}
-      <header className="fixed top-0 w-full z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={handleBack}>
-            <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-teal-500 shadow-lg shadow-teal-500/20">
-                <img src="https://cruisytravel.com/wp-content/uploads/2024/01/cropped-20240120_025955_0000.png" alt="Logo" className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <h1 className="font-russo text-xl tracking-wide uppercase text-white">Cruise <span style={{ color: BRAND_COLOR }}>Explorer</span></h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-             {view === 'line_view' && (
-                <button onClick={handleBack} className="hidden md:flex items-center gap-1 text-sm font-bold text-slate-400 hover:text-white transition-colors">
-                   <ArrowLeft className="w-4 h-4" /> All Lines
-                </button>
-             )}
-             <button onClick={() => setShowList(true)} className="relative p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors group border border-slate-700">
-               <CruiseShipIcon className="w-8 h-8 text-teal-400" count={savedItems.length} />
-             </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="pt-20 pb-10 min-h-screen bg-ocean-gradient">
-        
-        {/* --- VIEW: HOME (Brand Selection) --- */}
-        {!selectedBrand && (
-          <div className="max-w-7xl mx-auto px-4 animate-fade-in">
-             <div className="text-center py-10">
-                <h2 className="font-russo text-4xl md:text-5xl text-white mb-4 drop-shadow-lg">Find Your Perfect Voyage</h2>
-                <p className="text-slate-400 text-lg max-w-2xl mx-auto">Select a cruise line to start exploring ships, itineraries, and exclusive experiences.</p>
+        {/* Header (Desktop Only) */}
+        <header className="bg-white border-b border-slate-200 px-8 py-4 hidden md:flex items-center justify-between z-20">
+           <h2 className="font-bold text-xl text-slate-800">
+              {activeTab === 'explore' && 'Find Your Voyage'}
+              {activeTab === 'essentials' && 'Travel Essentials'}
+              {activeTab === 'list' && 'Your Suitcase'}
+           </h2>
+           
+           {activeTab === 'explore' && (
+             <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search ships..." 
+                  className="pl-10 pr-4 py-2 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#34a4b8]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
              </div>
+           )}
+        </header>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {CRUISE_LINES.map((brand) => (
+        {/* Content Scroll Area */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24">
+           
+           {/* --- TAB: EXPLORE --- */}
+           {activeTab === 'explore' && (
+             <>
+                {/* Brand Selector */}
+                <div className="flex gap-3 overflow-x-auto pb-4 mb-6 hide-scrollbar">
                    <button 
-                      key={brand.id}
-                      onClick={() => handleSelectBrand(brand)}
-                      className="group relative h-48 rounded-3xl overflow-hidden shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-teal-500/20 text-left w-full"
+                      onClick={() => setSelectedBrand(null)}
+                      className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border ${!selectedBrand ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
                    >
-                      <div className="absolute inset-0">
-                         <img src={brand.image} alt={brand.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
-                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-full p-6">
-                         <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-russo text-2xl text-white">{brand.name}</h3>
-                            <div className="p-2 bg-white/10 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
-                               <ArrowRight className="w-5 h-5 text-white" />
-                            </div>
-                         </div>
-                         <p className="text-slate-300 text-sm font-medium border-l-2 border-teal-500 pl-2">{brand.slogan}</p>
-                      </div>
+                      All Lines
                    </button>
-                ))}
-             </div>
-          </div>
-        )}
+                   {CRUISE_LINES.map(brand => (
+                      <button
+                         key={brand.id}
+                         onClick={() => setSelectedBrand(selectedBrand?.id === brand.id ? null : brand)}
+                         className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border ${selectedBrand?.id === brand.id ? 'bg-white shadow-md ring-2 ring-[#34a4b8] border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                      >
+                         {brand.name}
+                      </button>
+                   ))}
+                </div>
 
-        {/* --- VIEW: LINE DETAILS (Condensing: Tabs for Voyages / Essentials) --- */}
-        {selectedBrand && (
-           <div className="max-w-7xl mx-auto px-4 animate-fade-in">
-              
-              {/* Brand Header */}
-              <div className="glass-panel rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
-                 <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                 <div className="z-10 text-center md:text-left flex-1">
-                    <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                       <h2 className="font-russo text-3xl text-white">{selectedBrand.name}</h2>
-                       <span className="px-2 py-0.5 rounded border border-white/20 text-xs text-white/70 bg-black/20">Selected</span>
-                    </div>
-                    <p className="text-slate-300 text-sm">{selectedBrand.slogan}</p>
-                 </div>
-                 <div className="z-10 w-full md:w-auto relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                       type="text" 
-                       placeholder="Search itineraries..." 
-                       className="w-full md:w-64 bg-black/30 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                       value={searchQuery}
-                       onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                 </div>
-              </div>
+                {/* Loading State */}
+                {loading && (
+                   <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#34a4b8]"></div>
+                      <p className="mt-4 text-sm font-medium">Loading voyages...</p>
+                   </div>
+                )}
 
-              {/* Tabs for Condensing View */}
-              <div className="flex gap-4 mb-6 border-b border-white/10">
-                 <button 
-                    onClick={() => setInternalTab('voyages')}
-                    className={`pb-3 px-4 text-sm font-bold transition-colors border-b-2 ${internalTab === 'voyages' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400 hover:text-white'}`}
-                 >
-                    Voyages
-                 </button>
-                 <button 
-                    onClick={() => setInternalTab('essentials')}
-                    className={`pb-3 px-4 text-sm font-bold transition-colors border-b-2 ${internalTab === 'essentials' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400 hover:text-white'}`}
-                 >
-                    Essentials
-                 </button>
-              </div>
+                {/* Cruise Grid */}
+                {!loading && (
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {filteredCruises.length > 0 ? filteredCruises.map(cruise => {
+                         const isSaved = savedItems.find(i => i.id === cruise.id);
+                         const brand = CRUISE_LINES.find(b => b.id === cruise.lineId);
+                         return (
+                            <div key={cruise.id} onClick={() => setSelectedItem({ ...cruise, type: 'cruise' })} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col h-full border border-slate-100">
+                               <div className="relative h-48 bg-slate-200">
+                                  {cruise.image ? (
+                                     <img src={cruise.image} alt={cruise.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                  ) : (
+                                     <div className="w-full h-full flex items-center justify-center text-4xl">🚢</div>
+                                  )}
+                                  <div className="absolute top-3 right-3">
+                                     <button 
+                                        onClick={(e) => { e.stopPropagation(); toggleSave(cruise); }}
+                                        className={`p-2 rounded-full backdrop-blur-md shadow-sm transition-colors ${isSaved ? 'bg-[#34a4b8] text-white' : 'bg-white/90 text-slate-400 hover:text-[#34a4b8]'}`}
+                                     >
+                                        {isSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
+                                     </button>
+                                  </div>
+                                  {brand && <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase">{brand.name}</div>}
+                               </div>
+                               <div className="p-4 flex flex-col flex-1">
+                                  <h3 className="font-bold text-slate-900 leading-tight mb-1 line-clamp-2">{cruise.title}</h3>
+                                  <p className="text-xs text-slate-500 mb-4">{cruise.ship}</p>
+                                  <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
+                                     <div>
+                                        <p className="text-[10px] text-slate-400 uppercase font-bold">From</p>
+                                        <p className="text-lg font-bold text-slate-800">${cruise.price}</p>
+                                     </div>
+                                     <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-xs font-bold text-slate-600">
+                                        <Sun className="w-3 h-3 text-orange-400" /> {cruise.nights} Nights
+                                     </div>
+                                  </div>
+                               </div>
+                            </div>
+                         );
+                      }) : (
+                         <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                            <p className="text-slate-400">No cruises found.</p>
+                         </div>
+                      )}
+                   </div>
+                )}
+             </>
+           )}
 
-              {/* Tab Content: VOYAGES */}
-              {internalTab === 'voyages' && (
-                 <div className="animate-fade-in">
-                    <div className="flex justify-between items-center mb-4">
-                       <h3 className="font-russo text-xl text-white flex items-center gap-2"><Ship className="w-5 h-5 text-teal-400" /> Available Voyages</h3>
-                    </div>
-                    
-                    {isLoading ? (
-                       <div className="text-center py-12 text-slate-500">Loading voyages...</div>
-                    ) : (
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                          {filteredCruises.length > 0 ? filteredCruises.map(cruise => {
-                             const isSaved = savedItems.find(i => i.id === cruise.id);
-                             return (
-                                <div key={cruise.id} className="glass-panel rounded-2xl overflow-hidden hover:border-teal-500/50 transition-all duration-300 group flex flex-col">
-                                   <div className="h-40 relative overflow-hidden bg-slate-800">
-                                      {cruise.realImage ? (
-                                         <img src={cruise.realImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={cruise.title} />
-                                      ) : (
-                                         <div className="w-full h-full flex items-center justify-center text-4xl">{cruise.image}</div>
-                                      )}
-                                      <button 
-                                         onClick={() => toggleSave({ ...cruise, type: 'cruise' })}
-                                         className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all ${isSaved ? 'bg-teal-500 text-white' : 'bg-black/30 text-white hover:bg-white hover:text-slate-900'}`}
-                                      >
-                                         {isSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
-                                      </button>
-                                      <div className="absolute bottom-0 left-0 w-full p-3 bg-gradient-to-t from-slate-900 to-transparent">
-                                         <p className="text-white font-bold text-lg leading-none shadow-black drop-shadow-md">{cruise.title}</p>
-                                      </div>
-                                   </div>
-                                   
-                                   <div className="p-4 flex-grow flex flex-col">
-                                      <div className="flex justify-between items-center mb-4">
-                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{cruise.ship}</span>
-                                         <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded text-xs text-white">
-                                            <Sun className="w-3 h-3 text-orange-400" /> {cruise.nights} Nights
-                                         </div>
-                                      </div>
-                                      
-                                      <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                                         <div>
-                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Starting From</p>
-                                            <p className="text-xl font-russo text-white">${cruise.price}</p>
-                                         </div>
-                                         <button 
-                                            onClick={() => setViewingCruise(cruise)}
-                                            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-colors shadow-lg shadow-teal-900/20"
-                                         >
-                                            View & Plan
-                                         </button>
-                                      </div>
-                                   </div>
-                                </div>
-                             );
-                          }) : (
-                             <div className="col-span-full py-10 text-center text-slate-500 border border-dashed border-slate-700 rounded-xl">
-                                No voyages found matching criteria.
-                             </div>
-                          )}
+           {/* --- TAB: ESSENTIALS --- */}
+           {activeTab === 'essentials' && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                 {essentials.map(item => {
+                    const isSaved = savedItems.find(i => i.id === item.id);
+                    return (
+                       <div key={item.id} onClick={() => setSelectedItem({ ...item, type: 'essential' })} className="bg-white rounded-xl p-4 border border-slate-100 hover:shadow-lg transition-all cursor-pointer group">
+                          <div className="aspect-square bg-slate-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+                             {item.image ? <img src={item.image} className="w-full h-full object-cover mix-blend-multiply" /> : <span className="text-2xl">🛍️</span>}
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); toggleSave(item); }}
+                                className={`absolute top-2 right-2 p-1.5 rounded-full z-10 transition-colors ${isSaved ? 'bg-[#34a4b8] text-white' : 'bg-slate-200 text-slate-400 hover:bg-slate-300'}`}
+                             >
+                                {isSaved ? <Check className="w-3 h-3" /> : <ListPlus className="w-3 h-3" />}
+                             </button>
+                          </div>
+                          <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 mb-2 min-h-[2.5em]">{item.title}</h4>
+                          <p className="font-bold text-[#34a4b8]">${item.price}</p>
                        </div>
-                    )}
-                 </div>
-              )}
+                    );
+                 })}
+              </div>
+           )}
 
-              {/* Tab Content: ESSENTIALS */}
-              {internalTab === 'essentials' && (
-                 <div className="animate-fade-in">
-                    <h3 className="font-russo text-xl text-white mb-4 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-orange-400" /> Voyage Essentials</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-12">
-                       {essentials.map(item => {
-                          const isSaved = savedItems.find(i => i.id === item.id);
-                          return (
-                             <div key={item.id} className="glass-panel p-3 rounded-xl flex items-center gap-3 relative group hover:bg-white/5 transition-colors">
-                                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
-                                   {item.isRealImage ? <img src={item.image} className="w-full h-full object-cover" /> : item.image}
-                                </div>
-                                <div className="min-w-0 flex-grow">
-                                   <p className="text-xs font-bold text-white truncate">{item.title}</p>
-                                   <p className="text-[10px] text-slate-400">${item.price}</p>
-                                </div>
-                                <button 
-                                   onClick={() => toggleSave({...item, type: 'essential'})}
-                                   className={`p-1.5 rounded-full transition-colors ${isSaved ? 'text-teal-400' : 'text-slate-500 hover:text-white'}`}
-                                >
-                                   {isSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
-                                </button>
+           {/* --- TAB: LIST --- */}
+           {activeTab === 'list' && (
+              <div className="max-w-3xl mx-auto">
+                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                       <h3 className="font-bold text-lg text-slate-800">Your Voyage List</h3>
+                       <button onClick={handleEmail} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-2">
+                          <Mail className="w-3 h-3" /> Email to Me
+                       </button>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                       {savedItems.length === 0 ? (
+                          <div className="p-12 text-center text-slate-400">Your list is empty. Go explore!</div>
+                       ) : savedItems.map(item => (
+                          <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                             <div className="w-16 h-16 bg-slate-200 rounded-lg flex-shrink-0 overflow-hidden">
+                                {item.image ? <img src={item.image} className="w-full h-full object-cover" /> : null}
                              </div>
-                          );
-                       })}
+                             <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-slate-800 truncate">{item.title}</h4>
+                                <p className="text-xs text-slate-500 uppercase">{item.type}</p>
+                             </div>
+                             <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">View</a>
+                             <button onClick={() => toggleSave(item)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                       ))}
                     </div>
                  </div>
-              )}
-           </div>
-        )}
+              </div>
+           )}
 
+        </div>
       </main>
 
-      {/* --- Drawers --- */}
-      <ListDrawer isOpen={showList} onClose={() => setShowList(false)} savedItems={savedItems} onRemove={(id) => setSavedItems(savedItems.filter(i => i.id !== id))} onEmail={handleEmail} />
-      
-      {/* --- Detail Modal --- */}
-      {viewingCruise && <DetailModal cruise={viewingCruise} brand={CRUISE_LINES.find(b => b.id === viewingCruise.lineId)} activities={activities} onClose={() => setViewingCruise(null)} onSave={toggleSave} isSaved={!!savedItems.find(c => c.id === viewingCruise.id)} onSaveActivity={toggleSave} savedActivityIds={savedItems.map(i => i.id)} />}
+      {/* --- MOBILE NAV --- */}
+      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={savedItems.length} />
+
+      {/* --- MODAL --- */}
+      <DetailModal 
+         item={selectedItem} 
+         type={selectedItem?.type} 
+         activities={activities}
+         isSaved={selectedItem && !!savedItems.find(i => i.id === selectedItem.id)}
+         onSave={toggleSave}
+         onClose={() => setSelectedItem(null)} 
+      />
 
     </div>
   );
