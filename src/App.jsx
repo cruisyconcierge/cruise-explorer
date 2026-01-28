@@ -168,21 +168,23 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   const accentColor = brand ? brand.color : BRAND_COLOR;
 
   // --- SMART EXPERIENCE MATCHING ---
-  // Matches if any port in the cruise itinerary *contains* the activity port name
-  // OR if the activity port name *contains* the cruise port name.
-  // This handles cases like: Cruise="Key West, FL" <-> Activity="Key West"
   const relevantActivities = type === 'cruise' && activities 
     ? activities.filter(act => {
-        if (!item.itinerary || !act.port) return false;
+        // Source of ports to match against: 'port_keywords' (ACF) preferred, 'itinerary' (ACF ports_of_call) fallback
+        const matchSource = (item.portKeywords && item.portKeywords.length > 0) 
+            ? item.portKeywords 
+            : item.itinerary;
+
+        if (!matchSource || !act.port) return false;
         
         // Normalize Activity Port
         const actPort = act.port.toLowerCase().trim();
-        if (actPort === 'destination') return false; // Ignore generic fallback
+        if (actPort === 'destination' || actPort === 'unknown') return false; 
 
-        // Check against each port in the cruise itinerary
-        return item.itinerary.some(cruisePortString => {
+        // Check against matching source
+        return matchSource.some(cruisePortString => {
             const cPort = cruisePortString.toLowerCase().trim();
-            // Bidirectional check for maximum compatibility
+            // Bidirectional check
             return cPort.includes(actPort) || actPort.includes(cPort);
         });
       })
@@ -287,7 +289,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                          ))}
                       </div>
                    ) : (
-                      <p className="text-sm text-slate-400 italic">No specific shore excursions found for these ports in our database.</p>
+                      <p className="text-sm text-slate-400 italic">No specific shore excursions found matching your {item.portKeywords ? 'port keywords' : 'itinerary ports'} yet. Make sure to add `port_keywords` to your Cruise CPT!</p>
                    )}
                 </div>
               </>
@@ -357,9 +359,13 @@ export default function CruiseApp() {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
 
-            // Split ports by comma OR newline to handle different input formats
+            // Split ports by comma OR newline
             const rawPorts = p.acf?.ports_of_call || '';
             const portsList = rawPorts.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+            // Fetch 'port_keywords' for smart matching if available
+            const rawKeywords = p.acf?.port_keywords || '';
+            const keywordsList = rawKeywords.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
             return {
               id: p.id,
@@ -370,6 +376,7 @@ export default function CruiseApp() {
               price: formatPrice(p.acf?.price),
               nights: p.acf?.nights || '7',
               itinerary: portsList,
+              portKeywords: keywordsList.length > 0 ? keywordsList : null, // Store keywords
               realImage: imgUrl,
               link: p.acf?.affiliate_link || '#',
               description: p.acf?.description || '',
@@ -400,10 +407,8 @@ export default function CruiseApp() {
         if (activityRes.ok) {
           const data = await activityRes.json();
           setActivities(data.map(post => {
-            // Determine Port Logic: Check 'destination_tag' ACF first
             let portName = post.acf?.destination_tag;
             
-            // Fallback: Check Title for common port names if tag is missing
             if (!portName) {
                 const lowerTitle = post.title.rendered.toLowerCase();
                 if (lowerTitle.includes('key west')) portName = 'Key West';
@@ -412,7 +417,7 @@ export default function CruiseApp() {
                 else if (lowerTitle.includes('st thomas') || lowerTitle.includes('st. thomas')) portName = 'St Thomas';
                 else if (lowerTitle.includes('miami')) portName = 'Miami';
                 else if (lowerTitle.includes('honolulu')) portName = 'Honolulu';
-                else portName = 'Destination'; // Generic fallback
+                else portName = 'Destination'; 
             }
 
             return {
@@ -422,7 +427,7 @@ export default function CruiseApp() {
               port: portName,
               price: formatPrice(post.acf?.price),
               image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-              link: post.acf?.booking_url || post.link, // Use booking_url field
+              link: post.acf?.booking_url || post.link, 
               category: post.acf?.category,
               duration: post.acf?.duration
             };
