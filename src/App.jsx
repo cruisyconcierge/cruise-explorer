@@ -22,7 +22,8 @@ import {
   Star,
   Play,
   Clock,
-  Heart
+  Heart,
+  Printer
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -191,7 +192,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
       })
     : [];
 
-  // Filter unique ports for display - Logic improved to handle duplicates and case sensitivity
+  // Filter unique ports for display
   const uniquePorts = Array.isArray(item.itinerary) 
     ? [...new Set(item.itinerary
         .filter(stop => {
@@ -209,13 +210,8 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
         <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
 
         <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-900">
-          {/* Always use high quality stock image for detail header for better aesthetic */}
           <img src={DETAIL_FALLBACK_IMAGE} alt={item.title} className="w-full h-full object-cover opacity-90" />
-          
-          {/* Brand Color Overlay & Blur */}
           <div className="absolute inset-0 bg-[#34a4b8]/30 backdrop-blur-[2px]"></div>
-          
-          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
           
           <div className="absolute bottom-0 left-0 w-full p-6 text-white">
@@ -237,7 +233,6 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
         </div>
 
         <div className="w-full md:w-7/12 flex flex-col bg-white h-full overflow-hidden">
-          {/* Tabs */}
           {type === 'cruise' && (
             <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar">
                {[
@@ -246,13 +241,16 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                  { id: 'experiences', label: 'Experiences', icon: Palmtree },
                  { id: 'gear', label: 'Gear', icon: ShoppingBag }
                ].map(tab => (
-                 <button 
-                   key={tab.id}
-                   onClick={() => setActiveTab(tab.id)}
-                   className={`flex items-center gap-2 px-6 py-4 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id ? 'border-teal-500 text-teal-600 bg-teal-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                 >
-                   <tab.icon className="w-4 h-4" /> {tab.label}
-                 </button>
+                 // Hide Gear tab if no Amazon JSON
+                 (tab.id === 'gear' && (!item.amazonJson || item.amazonJson.length === 0)) ? null : (
+                   <button 
+                     key={tab.id}
+                     onClick={() => setActiveTab(tab.id)}
+                     className={`flex items-center gap-2 px-6 py-4 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id ? 'border-teal-500 text-teal-600 bg-teal-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                   >
+                     <tab.icon className="w-4 h-4" /> {tab.label}
+                   </button>
+                 )
                ))}
             </div>
           )}
@@ -270,7 +268,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                       </div>
                       <div>
                         <p className="text-slate-400 text-[10px] font-bold uppercase">Duration</p>
-                        <p className="font-bold text-slate-900 flex items-center gap-1"><Sun className="w-4 h-4 text-orange-400" /> {item.nights || 7} Nights</p>
+                        <p className="font-bold text-slate-900 flex items-center gap-1"><Sun className="w-4 h-4 text-orange-400" /> {item.nights} Nights</p>
                       </div>
                       <div>
                         <p className="text-slate-400 text-[10px] font-bold uppercase">Vibe</p>
@@ -351,13 +349,13 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                   </div>
                 )}
 
-                {activeTab === 'gear' && (
+                {activeTab === 'gear' && item.amazonJson && item.amazonJson.length > 0 && (
                    <div className="animate-fade-in">
                       <h3 className="font-russo text-slate-900 text-lg mb-4 flex items-center gap-2">
                          <ShoppingBag className="w-5 h-5 text-orange-500" /> Recommended Gear
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
-                         {item.amazonJson && item.amazonJson.map((gear, idx) => (
+                         {item.amazonJson.map((gear, idx) => (
                             <a key={idx} href={gear.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:shadow-sm transition-all flex items-center gap-3">
                                <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-2xl">🛍️</div>
                                <div className="min-w-0">
@@ -366,9 +364,6 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                                </div>
                             </a>
                          ))}
-                         {(!item.amazonJson || item.amazonJson.length === 0) && (
-                            <p className="col-span-2 text-sm text-slate-400">Check the main Essentials tab for general packing lists.</p>
-                         )}
                       </div>
                    </div>
                 )}
@@ -449,22 +444,28 @@ export default function CruiseApp() {
             const rawKeywords = p.acf?.port_keywords || '';
             const keywordsList = rawKeywords.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
+            // Improved Duration/Nights Parsing: Handle "X Night" and "X-Night"
+            const title = p.title.rendered;
+            const nightsMatch = title.match(/(\d+)[\s-]*Night/i);
+            const nights = nightsMatch ? parseInt(nightsMatch[1]) : (p.acf?.nights || 7);
+
             return {
               id: p.id,
               type: 'cruise',
-              title: p.title.rendered,
+              title: title,
               lineId: getLineId(p.acf?.cruise_line),
               ship: p.acf?.ship_name || 'Cruise Ship',
               price: formatPrice(p.acf?.price),
-              nights: p.acf?.nights || '7',
+              nights: nights,
               itinerary: portsList,
-              portKeywords: keywordsList.length > 0 ? keywordsList : null, // Store keywords
+              portKeywords: keywordsList.length > 0 ? keywordsList : null, 
               realImage: imgUrl,
               link: p.acf?.affiliate_link || '#',
               description: p.acf?.description || '',
               vibe: p.acf?.travel_vibe,
               rating: p.acf?.rating,
-              amazonJson: p.acf?.amazon_json ? JSON.parse(p.acf.amazon_json) : []
+              amazonJson: p.acf?.amazon_json ? JSON.parse(p.acf.amazon_json) : [],
+              qrCode: p.acf?.qr_code || null // URL to QR Code image for printing
             };
           }));
         }
@@ -482,7 +483,8 @@ export default function CruiseApp() {
                 title: p.title.rendered,
                 price: formatPrice(p.acf?.price),
                 link: p.acf?.affiliate_link || '#',
-                realImage: imgUrl
+                realImage: imgUrl,
+                qrCode: p.acf?.qr_code || null
              };
           }));
         }
@@ -512,7 +514,8 @@ export default function CruiseApp() {
               image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
               link: post.acf?.booking_url || post.link, 
               category: post.acf?.category,
-              duration: post.acf?.duration
+              duration: post.acf?.duration,
+              qrCode: post.acf?.qr_code || null
             };
           }));
         }
@@ -564,6 +567,14 @@ export default function CruiseApp() {
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Print Styles */
+        @media print {
+           body * { visibility: hidden; }
+           #print-section, #print-section * { visibility: visible; }
+           #print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; }
+           @page { size: auto; margin: 10mm; }
+        }
       `}</style>
 
       {/* --- Sidebar --- */}
@@ -580,6 +591,7 @@ export default function CruiseApp() {
               </div>
               <h1 className="font-russo text-lg text-slate-900">Cruisy <span style={{ color: BRAND_COLOR }}>Travel</span></h1>
            </div>
+           <a href="https://cruisytravel.com" className="p-2 text-slate-400 hover:text-teal-600"><Globe className="w-5 h-5" /></a>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24">
@@ -707,9 +719,14 @@ export default function CruiseApp() {
                  <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                        <h3 className="font-bold text-lg text-slate-800 font-russo">Your Voyage List</h3>
-                       <button onClick={handleEmail} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-2 font-roboto">
-                          <Mail className="w-3 h-3" /> Email to Me
-                       </button>
+                       <div className="flex gap-2">
+                           <button onClick={() => window.print()} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors flex items-center gap-2 font-roboto">
+                              <Printer className="w-3 h-3" /> Print
+                           </button>
+                           <button onClick={handleEmail} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-2 font-roboto">
+                              <Mail className="w-3 h-3" /> Email
+                           </button>
+                       </div>
                     </div>
                     <div className="divide-y divide-slate-100">
                        {savedItems.length === 0 ? (
@@ -745,6 +762,47 @@ export default function CruiseApp() {
          onSave={toggleSave}
          onClose={() => setSelectedItem(null)} 
       />
+      
+      {/* --- PRINT LAYOUT (Hidden on screen) --- */}
+      <div id="print-section" className="hidden">
+         <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-300">
+             <div className="flex items-center gap-3">
+                 <img src={LOGO_URL} className="h-12 w-12" alt="Logo" />
+                 <h1 className="font-russo text-2xl text-[#34a4b8]">Cruisy Travel</h1>
+             </div>
+             <div className="text-right">
+                 <h2 className="font-bold text-xl uppercase">My Voyage List</h2>
+             </div>
+         </div>
+         
+         <div className="grid grid-cols-1 gap-6">
+            {savedItems.map(item => (
+                <div key={item.id} className="flex border border-gray-200 rounded-lg p-4 gap-4 break-inside-avoid">
+                    <div className="w-24 h-24 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : null}
+                    </div>
+                    <div className="flex-grow">
+                        <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+                        <p className="text-sm text-gray-500 mb-2 uppercase tracking-wide">{item.type}</p>
+                        {item.type === 'cruise' && <p className="text-sm">Ship: {item.ship} | Nights: {item.nights}</p>}
+                        {item.price && <p className="font-bold text-[#34a4b8]">${item.price}</p>}
+                        <p className="text-xs text-gray-400 mt-2">{item.link}</p>
+                    </div>
+                    <div className="w-24 flex flex-col items-center justify-center border-l border-gray-100 pl-4">
+                        {item.qrCode ? (
+                           <img src={item.qrCode} className="w-20 h-20" alt="QR" />
+                        ) : (
+                           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(item.link)}`} className="w-20 h-20" alt="Scan to Book" />
+                        )}
+                        <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Scan to Book</span>
+                    </div>
+                </div>
+            ))}
+         </div>
+         <div className="mt-8 pt-4 border-t border-gray-300 text-center text-sm text-gray-500">
+             <p>Ready to book? Scan the codes above or visit www.cruisytravel.com</p>
+         </div>
+      </div>
 
     </div>
   );
