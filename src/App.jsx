@@ -23,8 +23,10 @@ import {
 } from 'lucide-react';
 
 // --- Configuration ---
+// VERIFY: Check if your CPT slug is 'cruise' or 'cruises' in CPT UI and update this URL accordingly.
 const WP_CRUISE_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/cruise?_embed&per_page=100'; 
 const WP_ACTIVITY_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/itineraries?_embed&per_page=100'; 
+const WP_AMAZON_API_URL = 'https://cruisytravel.com/wp-json/wp/v2/amazon_essentials?_embed&per_page=100';
 const BRAND_COLOR = '#34a4b8';
 
 // --- Static Data ---
@@ -44,13 +46,10 @@ const MOCK_ITINERARIES = [
 const MOCK_ESSENTIALS = [
   { id: 'e1', title: 'Waterproof Phone Pouch', price: '9.99', image: '📱', link: '#' },
   { id: 'e2', title: 'Magnetic Hooks (Heavy Duty)', price: '12.99', image: '🧲', link: '#' },
-  { id: 'e3', title: 'Reef Safe Sunscreen', price: '15.50', image: '🧴', link: '#' },
-  { id: 'e4', title: 'Power Strip (Non-Surge)', price: '19.99', image: '🔌', link: '#' },
 ];
 
 const MOCK_ACTIVITIES = [
   { id: 'a1', title: 'Blue Lagoon Island Beach Day', port: 'Nassau', price: 89, image: '🏝️', link: '#' },
-  { id: 'a2', title: 'Mayan Ruins Excursion', port: 'Cozumel', price: 120, image: '🏛️', link: '#' },
 ];
 
 // --- Helper Functions ---
@@ -387,27 +386,50 @@ export default function CruiseExplorer() {
         const cRes = await fetch(WP_CRUISE_API_URL);
         if (cRes.ok) {
           const data = await cRes.json();
-          const mapped = data.map(post => ({
-            id: post.id,
-            type: 'cruise',
-            lineId: getLineId(post.acf?.cruise_line),
-            title: post.title.rendered,
-            ship: post.acf?.ship_name || 'Cruise Ship',
-            nights: post.acf?.nights || 7,
-            port: post.acf?.departure_port || 'Miami',
-            price: post.acf?.price || 0,
-            image: '🚢',
-            realImage: post.acf?.main_image?.url || post.acf?.main_image || post._embedded?.['wp:featuredmedia']?.[0]?.source_url,
-            description: post.acf?.description || '',
-            itinerary: post.acf?.ports_of_call ? post.acf.ports_of_call.split(',').map(s => s.trim()) : [],
-            affiliateLink: post.acf?.affiliate_link || '#',
-            amazonJson: post.acf?.amazon_json ? JSON.parse(post.acf.amazon_json) : [],
-            rating: post.acf?.rating,
-            season: post.acf?.sailing_season || 'Year Round'
-          }));
+          const mapped = data.map(post => {
+            // Extract nights from title (e.g., "7-Night...")
+            const title = post.title.rendered;
+            const nightsMatch = title.match(/(\d+)-Night/i);
+            const nights = nightsMatch ? parseInt(nightsMatch[1]) : 7;
+
+            // Handle Ports (Map 'ports_of_call' ACF to itinerary list)
+            const ports = post.acf?.ports_of_call ? post.acf.ports_of_call.split(',').map(s => s.trim()) : [];
+            const startPort = ports.length > 0 ? ports[0] : 'See Details';
+
+            // Handle Destination/Regions (Array or String)
+            let regionList = ['Caribbean'];
+            if (post.acf?.destination) {
+                if (Array.isArray(post.acf.destination)) {
+                    regionList = post.acf.destination;
+                } else {
+                    regionList = [post.acf.destination];
+                }
+            }
+
+            return {
+              id: post.id,
+              type: 'cruise',
+              lineId: getLineId(post.acf?.cruise_line),
+              title: title,
+              ship: post.acf?.ship_name || 'Cruise Ship',
+              nights: nights,
+              port: startPort,
+              price: post.acf?.price || 0,
+              image: '🚢',
+              realImage: post.acf?.main_image?.url || post.acf?.main_image || post._embedded?.['wp:featuredmedia']?.[0]?.source_url,
+              description: post.acf?.description || '',
+              itinerary: ports,
+              affiliateLink: post.acf?.affiliate_link || '#',
+              amazonJson: post.acf?.amazon_json ? JSON.parse(post.acf.amazon_json) : [],
+              rating: post.acf?.rating,
+              season: 'Year Round', // Default since not in ACF list provided
+              regions: regionList
+            };
+          });
           setCruises(mapped);
         }
-        // Fetch Activities
+
+        // Fetch Activities (Itineraries CPT)
         const aRes = await fetch(WP_ACTIVITY_API_URL);
         if (aRes.ok) {
           const data = await aRes.json();
@@ -422,6 +444,23 @@ export default function CruiseExplorer() {
           }));
           setActivities(mapped);
         }
+
+        // Fetch Amazon Essentials
+        const eRes = await fetch(WP_AMAZON_API_URL);
+        if (eRes.ok) {
+          const data = await eRes.json();
+          const mapped = data.map(post => ({
+            id: post.id,
+            type: 'essential',
+            title: post.title.rendered,
+            price: post.acf?.price || '0.00',
+            link: post.acf?.affiliate_link || '#',
+            image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '🛍️', 
+            isRealImage: !!post._embedded?.['wp:featuredmedia']?.[0]?.source_url
+          }));
+          setEssentials(mapped);
+        }
+
       } catch (err) {
         console.warn('API Error', err);
       } finally {
@@ -472,14 +511,31 @@ export default function CruiseExplorer() {
   return (
     <div className="min-h-screen bg-slate-900 font-roboto text-slate-100 overflow-x-hidden selection:bg-teal-500 selection:text-white">
       
+      {/* Styles & Animation */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Russo+One&display=swap');
         .font-russo { font-family: 'Russo One', sans-serif; }
         .font-roboto { font-family: 'Roboto', sans-serif; }
-        .bg-ocean-gradient { background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%); }
-        .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .bg-ocean-gradient {
+          background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+        }
+        
+        .glass-panel {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-5px); }
+          100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
         .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
@@ -497,7 +553,7 @@ export default function CruiseExplorer() {
           </div>
 
           <div className="flex items-center gap-4">
-             {selectedBrand && (
+             {view === 'line_view' && (
                 <button onClick={handleBack} className="hidden md:flex items-center gap-1 text-sm font-bold text-slate-400 hover:text-white transition-colors">
                    <ArrowLeft className="w-4 h-4" /> All Lines
                 </button>
@@ -559,6 +615,16 @@ export default function CruiseExplorer() {
                     </div>
                     <p className="text-slate-300 text-sm">{selectedBrand.slogan}</p>
                  </div>
+                 <div className="z-10 w-full md:w-auto relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                       type="text" 
+                       placeholder="Search itineraries..." 
+                       className="w-full md:w-64 bg-black/30 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                 </div>
               </div>
 
               {/* Tabs for Condensing View */}
@@ -582,16 +648,6 @@ export default function CruiseExplorer() {
                  <div className="animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
                        <h3 className="font-russo text-xl text-white flex items-center gap-2"><Ship className="w-5 h-5 text-teal-400" /> Available Voyages</h3>
-                       <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                          <input 
-                             type="text" 
-                             placeholder="Search..." 
-                             className="bg-black/30 border border-white/10 rounded-lg py-1.5 pl-8 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
-                             value={searchQuery}
-                             onChange={(e) => setSearchQuery(e.target.value)}
-                          />
-                       </div>
                     </div>
                     
                     {isLoading ? (
@@ -657,11 +713,13 @@ export default function CruiseExplorer() {
                  <div className="animate-fade-in">
                     <h3 className="font-russo text-xl text-white mb-4 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-orange-400" /> Voyage Essentials</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-12">
-                       {MOCK_ESSENTIALS.map(item => {
+                       {essentials.map(item => {
                           const isSaved = savedItems.find(i => i.id === item.id);
                           return (
                              <div key={item.id} className="glass-panel p-3 rounded-xl flex items-center gap-3 relative group hover:bg-white/5 transition-colors">
-                                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl flex-shrink-0">{item.image}</div>
+                                <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                                   {item.isRealImage ? <img src={item.image} className="w-full h-full object-cover" /> : item.image}
+                                </div>
                                 <div className="min-w-0 flex-grow">
                                    <p className="text-xs font-bold text-white truncate">{item.title}</p>
                                    <p className="text-[10px] text-slate-400">${item.price}</p>
