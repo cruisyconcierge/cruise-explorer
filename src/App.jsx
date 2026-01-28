@@ -48,8 +48,8 @@ const CRUISE_LINES = [
   { id: 'princess', name: 'Princess', color: '#005696', logo: 'P' }
 ];
 
-// Direct MP4 link for reliable playback (Generic Ocean Stock Footage)
-const HERO_VIDEO = "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-cruise-ship-at-sea-4127-large.mp4";
+// Updated Hero Image
+const HERO_IMAGE_URL = "https://images.pexels.com/photos/4092994/pexels-photo-4092994.jpeg?auto=compress&cs=tinysrgb&w=1600";
 
 // --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
@@ -74,21 +74,17 @@ const formatPrice = (price) => {
 
 // --- COMPONENTS ---
 
-const VideoHero = () => {
+const ImageHero = () => {
   return (
     <div className="relative h-48 md:h-64 w-full overflow-hidden rounded-b-3xl shadow-lg mb-6 group bg-slate-800">
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover opacity-60"
-      >
-        <source src={HERO_VIDEO} type="video/mp4" />
-      </video>
+      <img 
+        src={HERO_IMAGE_URL} 
+        alt="Luxury liners sailing"
+        className="absolute inset-0 w-full h-full object-cover opacity-80"
+      />
       
       {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent"></div>
 
       {/* Hero Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
@@ -171,11 +167,17 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   const brand = type === 'cruise' ? CRUISE_LINES.find(b => b.id === item.lineId) : null;
   const accentColor = brand ? brand.color : BRAND_COLOR;
 
+  // Smart Experience Matching
+  // Looks for activities where the 'port' field matches any string in the cruise itinerary
   const relevantActivities = type === 'cruise' && activities 
     ? activities.filter(act => {
         if (!item.itinerary || !act.port) return false;
-        const portString = Array.isArray(item.itinerary) ? item.itinerary.join(' ') : item.itinerary;
-        return portString.toLowerCase().includes(act.port.toLowerCase());
+        // Join the entire cruise itinerary into one search string (e.g., "Miami, Key West, Nassau")
+        const itineraryString = Array.isArray(item.itinerary) ? item.itinerary.join(' ').toLowerCase() : item.itinerary.toLowerCase();
+        const activityPort = act.port.toLowerCase();
+        
+        // Match if the activity port name appears in the cruise itinerary
+        return itineraryString.includes(activityPort);
       })
     : [];
 
@@ -257,16 +259,22 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                    {relevantActivities.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                          {relevantActivities.map(act => (
-                            <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex items-center gap-3 group">
-                               <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                            <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
+                               <div className="flex justify-between items-start">
+                                  <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                                  <span className="text-[10px] uppercase font-bold text-slate-400">{act.port}</span>
+                               </div>
                                <div className="min-w-0">
-                                  <p className="font-bold text-slate-800 text-xs truncate group-hover:text-teal-600">{act.title}</p>
-                                  <p className="text-[10px] text-slate-500 uppercase">{act.port}</p>
-                                  {(act.duration || act.category) && (
-                                    <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
+                                  <p className="font-bold text-slate-800 text-xs line-clamp-2 group-hover:text-teal-600">{act.title}</p>
+                                  {(act.category || act.duration) && (
+                                    <p className="text-[10px] text-slate-500 mt-1">
                                       {act.category} {act.duration && `• ${act.duration}`}
                                     </p>
                                   )}
+                               </div>
+                               <div className="mt-auto pt-2 border-t border-slate-50 flex justify-between items-center">
+                                  <span className="text-xs font-bold text-slate-700">${act.price}</span>
+                                  <span className="text-[10px] font-bold text-teal-600 hover:underline flex items-center gap-1">Book <ExternalLink className="w-3 h-3" /></span>
                                </div>
                             </a>
                          ))}
@@ -381,9 +389,10 @@ export default function CruiseApp() {
         if (activityRes.ok) {
           const data = await activityRes.json();
           setActivities(data.map(post => {
-            // Determine Port logic: destination_tag -> title parsing -> fallback
+            // Determine Port Logic: Check 'destination_tag' ACF first
             let portName = post.acf?.destination_tag;
             
+            // Fallback: Check Title for common port names if tag is missing
             if (!portName) {
                 const lowerTitle = post.title.rendered.toLowerCase();
                 if (lowerTitle.includes('key west')) portName = 'Key West';
@@ -392,7 +401,7 @@ export default function CruiseApp() {
                 else if (lowerTitle.includes('st thomas') || lowerTitle.includes('st. thomas')) portName = 'St Thomas';
                 else if (lowerTitle.includes('miami')) portName = 'Miami';
                 else if (lowerTitle.includes('honolulu')) portName = 'Honolulu';
-                else portName = 'Destination';
+                else portName = 'Destination'; // Generic fallback
             }
 
             return {
@@ -402,7 +411,7 @@ export default function CruiseApp() {
               port: portName,
               price: formatPrice(post.acf?.price),
               image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-              link: post.acf?.booking_url || post.link,
+              link: post.acf?.booking_url || post.link, // Use booking_url field
               category: post.acf?.category,
               duration: post.acf?.duration
             };
@@ -479,7 +488,7 @@ export default function CruiseApp() {
            {/* --- TAB: EXPLORE --- */}
            {activeTab === 'explore' && (
              <>
-                <VideoHero />
+                <ImageHero />
 
                 {/* Brand Selector */}
                 <div className="flex gap-3 overflow-x-auto pb-4 mb-6 hide-scrollbar">
