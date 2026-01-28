@@ -191,12 +191,16 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
       })
     : [];
 
-  // Filter unique ports for display
-  const uniquePorts = Array.isArray(item.itinerary) ? [...new Set(item.itinerary.filter(stop => 
-    !stop.toLowerCase().includes('sea day') && 
-    !stop.toLowerCase().includes('embark') &&
-    !stop.toLowerCase().includes('disembark')
-  ))] : [];
+  // Filter unique ports for display - Logic improved to handle duplicates and case sensitivity
+  const uniquePorts = Array.isArray(item.itinerary) 
+    ? [...new Set(item.itinerary
+        .filter(stop => {
+          if (!stop) return false;
+          const s = stop.toLowerCase();
+          return !s.includes('sea day') && !s.includes('embark') && !s.includes('disembark');
+        })
+      )] 
+    : [];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -282,7 +286,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                     <div className="mt-8">
                       <h3 className="font-russo text-slate-900 text-lg mb-3">Ports of Call</h3>
                       <div className="flex flex-wrap gap-2">
-                        {uniquePorts.map(port => (
+                        {uniquePorts.length > 0 ? uniquePorts.map(port => (
                           <button 
                             key={port} 
                             onClick={() => setActiveTab('experiences')}
@@ -290,7 +294,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                           >
                             <Anchor className="w-3 h-3" /> {port}
                           </button>
-                        ))}
+                        )) : <p className="text-sm text-slate-400">See itinerary for details.</p>}
                       </div>
                     </div>
                   </div>
@@ -436,7 +440,8 @@ export default function CruiseApp() {
             }
 
             // Split ports by comma OR newline, handle potential carriage returns or HTML breaks
-            const rawPorts = p.acf?.ports_of_call || '';
+            // Priority: 'ports_csv' (ACF) > 'ports_of_call' (ACF)
+            const rawPorts = p.acf?.ports_csv || p.acf?.ports_of_call || '';
             const cleanPorts = rawPorts.replace(/<br\s*\/?>/gi, '\n');
             const portsList = cleanPorts.split(/\r\n|\r|\n|,/).map(s => s.trim()).filter(s => s.length > 0);
 
