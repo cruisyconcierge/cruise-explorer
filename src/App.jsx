@@ -47,14 +47,8 @@ const CRUISE_LINES = [
   { id: 'princess', name: 'Princess', color: '#005696', logo: 'P' }
 ];
 
-// Placeholder for Pexels Video URLs - Replace with actual direct .mp4 links in production
-// Since Pexels page URLs don't work in <video> tags, using a reliable public domain ocean loop for demo purposes
-// You should download your videos and upload them to your media library, then put the URLs here.
-const HERO_VIDEOS = [
-  "https://player.vimeo.com/external/363656976.sd.mp4?s=346296d4d4205562d49936eb9642220b35639536&profile_id=164&oauth2_token_id=57447761", // Ocean example 1
-  "https://player.vimeo.com/external/494228790.sd.mp4?s=3847990443939632363765955675567676766767&profile_id=164", // Ocean example 2
-  "https://player.vimeo.com/external/335864380.sd.mp4?s=279c663007604a37656666666666666666666666&profile_id=164"  // Ocean example 3
-];
+// Direct MP4 link for reliable playback (Generic Ocean Stock Footage)
+const HERO_VIDEO = "https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-cruise-ship-at-sea-4127-large.mp4";
 
 // --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
@@ -80,44 +74,30 @@ const formatPrice = (price) => {
 // --- COMPONENTS ---
 
 const VideoHero = () => {
-  const [currentVideo, setCurrentVideo] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentVideo((prev) => (prev + 1) % HERO_VIDEOS.length);
-    }, 8000); // Change video every 8 seconds
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div className="relative h-80 md:h-96 w-full overflow-hidden rounded-b-3xl shadow-xl mb-8 group">
-      {HERO_VIDEOS.map((video, index) => (
-        <video
-          key={index}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-            index === currentVideo ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <source src={video} type="video/mp4" />
-        </video>
-      ))}
+    <div className="relative h-48 md:h-64 w-full overflow-hidden rounded-b-3xl shadow-lg mb-6 group bg-slate-800">
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover opacity-60"
+      >
+        <source src={HERO_VIDEO} type="video/mp4" />
+      </video>
       
       {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent"></div>
 
       {/* Hero Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl shadow-2xl mb-4 transform transition-transform hover:scale-105">
-          <h1 className="font-russo text-3xl md:text-5xl text-white tracking-wide drop-shadow-lg uppercase">
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-xl shadow-xl mb-2 transform transition-transform hover:scale-105">
+          <h1 className="font-russo text-2xl md:text-3xl text-white tracking-wide drop-shadow-lg uppercase">
             Cruise Explorer
           </h1>
         </div>
-        <p className="text-white/90 text-lg md:text-xl font-medium max-w-2xl drop-shadow-md">
-          Discover your perfect voyage, find exclusive experiences, and pack like a pro.
+        <p className="text-white/90 text-sm md:text-base font-roboto font-medium max-w-lg drop-shadow-md">
+          Discover voyages, find experiences, and pack like a pro.
         </p>
       </div>
     </div>
@@ -136,7 +116,7 @@ const Sidebar = ({ activeTab, setActiveTab, cartCount }) => (
       </div>
     </div>
 
-    <nav className="flex-1 px-4 space-y-2 mt-4">
+    <nav className="flex-1 px-4 space-y-2 mt-4 font-roboto">
       <button onClick={() => setActiveTab('explore')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'explore' ? 'bg-[#34a4b8] text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
         <Ship className="w-5 h-5" />
         <span className="font-medium text-sm">Voyages</span>
@@ -154,7 +134,7 @@ const Sidebar = ({ activeTab, setActiveTab, cartCount }) => (
       </button>
     </nav>
 
-    <div className="p-4 border-t border-slate-800">
+    <div className="p-4 border-t border-slate-800 font-roboto">
       <a href="https://cruisytravel.com" className="flex items-center gap-2 text-xs text-slate-400 hover:text-[#34a4b8] transition-colors">
         <ArrowLeft className="w-3 h-3" /> Back to CruisyTravel.com
       </a>
@@ -164,7 +144,7 @@ const Sidebar = ({ activeTab, setActiveTab, cartCount }) => (
 
 // 2. Mobile Navigation
 const MobileNav = ({ activeTab, setActiveTab, cartCount }) => (
-  <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 text-white border-t border-slate-800 z-50 flex justify-around p-2 pb-safe">
+  <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 text-white border-t border-slate-800 z-50 flex justify-around p-2 pb-safe font-roboto">
     <button onClick={() => setActiveTab('explore')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'explore' ? 'text-[#34a4b8]' : 'text-slate-500'}`}>
       <Ship className="w-6 h-6" />
       <span className="text-[10px] mt-1">Voyages</span>
@@ -200,13 +180,13 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="bg-slate-50 w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative" onClick={e => e.stopPropagation()}>
+      <div className="bg-slate-50 w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative font-roboto" onClick={e => e.stopPropagation()}>
         
         <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
 
         <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-200">
-          {item.image ? (
-            <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+          {item.realImage ? (
+            <img src={item.realImage} alt={item.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl text-slate-400">📷</div>
           )}
@@ -214,7 +194,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
           
           <div className="absolute bottom-0 left-0 w-full p-6 text-white">
             {type === 'cruise' && <span className="px-2 py-1 rounded bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider mb-2 inline-block border border-white/10">{item.ship}</span>}
-            <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-2">{item.title}</h2>
+            <h2 className="font-russo text-2xl md:text-3xl leading-tight mb-2">{item.title}</h2>
             
             <div className="flex gap-3 mt-4">
               <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-white text-slate-900 rounded-xl font-bold text-center text-sm hover:bg-slate-100 transition-colors shadow-lg">
@@ -235,7 +215,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                 <div className="flex items-center gap-6 text-sm border-b border-slate-100 pb-6">
                   <div>
                     <p className="text-slate-400 text-[10px] font-bold uppercase">Price</p>
-                    <p className="font-bold text-slate-900 text-lg">${item.price}</p>
+                    <p className="font-bold text-slate-900 text-lg font-russo">${item.price}</p>
                   </div>
                   <div>
                     <p className="text-slate-400 text-[10px] font-bold uppercase">Duration</p>
@@ -248,12 +228,12 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg mb-3">About this Voyage</h3>
-                  <div className="prose prose-sm text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.description || 'No description available.' }}></div>
+                  <h3 className="font-russo text-slate-900 text-lg mb-3">About this Voyage</h3>
+                  <div className="prose prose-sm text-slate-600 leading-relaxed font-roboto" dangerouslySetInnerHTML={{ __html: item.description || 'No description available.' }}></div>
                 </div>
 
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg mb-4">Itinerary</h3>
+                  <h3 className="font-russo text-slate-900 text-lg mb-4">Itinerary</h3>
                   <div className="space-y-4 relative pl-4 border-l-2 border-slate-100">
                     {Array.isArray(item.itinerary) && item.itinerary.map((port, i) => (
                       <div key={i} className="relative">
@@ -265,7 +245,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                 </div>
 
                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                   <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
+                   <h3 className="font-russo text-slate-900 text-lg mb-4 flex items-center gap-2">
                       <Palmtree className="w-5 h-5 text-teal-600" /> Experiences in Port
                    </h3>
                    {relevantActivities.length > 0 ? (
@@ -290,10 +270,10 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
             {type === 'essential' && (
                <div>
                   <div className="flex items-center justify-between mb-6">
-                     <span className="text-2xl font-bold text-slate-900">${item.price}</span>
+                     <span className="text-2xl font-bold text-slate-900 font-russo">${item.price}</span>
                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold uppercase">Amazon Essential</span>
                   </div>
-                  <p className="text-slate-600 mb-6">This item has been curated by our travel experts as a must-have for your next cruise vacation.</p>
+                  <p className="text-slate-600 mb-6 font-roboto">This item has been curated by our travel experts as a must-have for your next cruise vacation.</p>
                   <a href={item.link} target="_blank" rel="noopener noreferrer" className="block w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-center transition-colors">
                      Buy on Amazon
                   </a>
@@ -341,33 +321,56 @@ export default function CruiseApp() {
 
         if (cruiseRes.ok) {
           const data = await cruiseRes.json();
-          setCruises(data.map(p => ({
-            id: p.id,
-            type: 'cruise',
-            title: p.title.rendered,
-            lineId: getLineId(p.acf?.cruise_line),
-            ship: p.acf?.ship_name || 'Cruise Ship',
-            price: formatPrice(p.acf?.price),
-            nights: p.acf?.nights || '7',
-            itinerary: p.acf?.ports_of_call ? p.acf.ports_of_call.split(',').map(s => s.trim()) : [],
-            image: p.acf?.main_image?.url || p.acf?.main_image || p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-            link: p.acf?.affiliate_link || '#',
-            description: p.acf?.description || '',
-            vibe: p.acf?.travel_vibe,
-            rating: p.acf?.rating
-          })));
+          setCruises(data.map(p => {
+            // Enhanced Image Finding Logic
+            let imgUrl = null;
+            
+            // 1. Try ACF Main Image (Object or URL)
+            if (p.acf?.main_image) {
+                if (typeof p.acf.main_image === 'string') imgUrl = p.acf.main_image;
+                else if (p.acf.main_image.url) imgUrl = p.acf.main_image.url;
+            }
+            
+            // 2. Try Featured Image (Standard WP)
+            if (!imgUrl && p._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
+                imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
+            }
+
+            return {
+              id: p.id,
+              type: 'cruise',
+              title: p.title.rendered,
+              lineId: getLineId(p.acf?.cruise_line),
+              ship: p.acf?.ship_name || 'Cruise Ship',
+              price: formatPrice(p.acf?.price),
+              nights: p.acf?.nights || '7',
+              itinerary: p.acf?.ports_of_call ? p.acf.ports_of_call.split(',').map(s => s.trim()) : [],
+              realImage: imgUrl,
+              link: p.acf?.affiliate_link || '#',
+              description: p.acf?.description || '',
+              vibe: p.acf?.travel_vibe,
+              rating: p.acf?.rating
+            };
+          }));
         }
 
         if (essentialRes.ok) {
           const data = await essentialRes.json();
-          setEssentials(data.map(p => ({
-            id: p.id,
-            type: 'essential',
-            title: p.title.rendered,
-            price: formatPrice(p.acf?.price),
-            link: p.acf?.affiliate_link || '#',
-            image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null
-          })));
+          setEssentials(data.map(p => {
+             // Essential Image Logic
+             let imgUrl = null;
+             if (p._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
+                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
+             }
+             return {
+                id: p.id,
+                type: 'essential',
+                title: p.title.rendered,
+                price: formatPrice(p.acf?.price),
+                link: p.acf?.affiliate_link || '#',
+                realImage: imgUrl
+             };
+          }));
         }
 
         if (activityRes.ok) {
@@ -418,13 +421,27 @@ export default function CruiseApp() {
   });
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
+    <div className="flex h-screen bg-slate-100 font-roboto text-slate-800 overflow-hidden">
       
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Russo+One&display=swap');
+        .font-russo { font-family: 'Russo One', sans-serif; }
+        .font-roboto { font-family: 'Roboto', sans-serif; }
+        .bg-ocean-gradient { background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%); }
+        .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      {/* --- Sidebar --- */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={savedItems.length} />
 
+      {/* --- Content Area --- */}
       <main className="flex-1 ml-0 md:ml-64 relative flex flex-col h-full overflow-hidden">
         
-        {/* Mobile Header (Replaces Sidebar on Mobile) */}
+        {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-20">
            <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#34a4b8]">
@@ -445,7 +462,7 @@ export default function CruiseApp() {
                 <div className="flex gap-3 overflow-x-auto pb-4 mb-6 hide-scrollbar">
                    <button 
                       onClick={() => setSelectedBrand(null)}
-                      className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border ${!selectedBrand ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                      className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border font-roboto ${!selectedBrand ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
                    >
                       All Lines
                    </button>
@@ -453,7 +470,7 @@ export default function CruiseApp() {
                       <button
                          key={brand.id}
                          onClick={() => setSelectedBrand(selectedBrand?.id === brand.id ? null : brand)}
-                         className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border ${selectedBrand?.id === brand.id ? 'bg-white shadow-md ring-2 ring-[#34a4b8] border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                         className={`flex-shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all border font-roboto ${selectedBrand?.id === brand.id ? 'bg-white shadow-md ring-2 ring-[#34a4b8] border-transparent' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
                       >
                          {brand.name}
                       </button>
@@ -466,7 +483,7 @@ export default function CruiseApp() {
                    <input 
                      type="text" 
                      placeholder="Search ships, destinations..." 
-                     className="w-full pl-12 pr-4 py-3 bg-white rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#34a4b8] transition-all"
+                     className="w-full pl-12 pr-4 py-3 bg-white rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#34a4b8] transition-all font-roboto"
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
                    />
@@ -476,7 +493,7 @@ export default function CruiseApp() {
                 {loading && (
                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#34a4b8]"></div>
-                      <p className="mt-4 text-sm font-medium">Loading voyages...</p>
+                      <p className="mt-4 text-sm font-medium font-roboto">Loading voyages...</p>
                    </div>
                 )}
 
@@ -489,8 +506,8 @@ export default function CruiseApp() {
                          return (
                             <div key={cruise.id} onClick={() => setSelectedItem({ ...cruise, type: 'cruise' })} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col h-full border border-slate-100">
                                <div className="relative h-48 bg-slate-200">
-                                  {cruise.image ? (
-                                     <img src={cruise.image} alt={cruise.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                  {cruise.realImage ? (
+                                     <img src={cruise.realImage} alt={cruise.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                   ) : (
                                      <div className="w-full h-full flex items-center justify-center text-4xl">🚢</div>
                                   )}
@@ -502,25 +519,25 @@ export default function CruiseApp() {
                                         {isSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
                                      </button>
                                   </div>
-                                  {brand && <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase">{brand.name}</div>}
+                                  {brand && <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase font-roboto">{brand.name}</div>}
                                </div>
                                <div className="p-4 flex flex-col flex-1">
-                                  <h3 className="font-bold text-slate-900 leading-tight mb-1 line-clamp-2">{cruise.title}</h3>
-                                  <p className="text-xs text-slate-500 mb-4">{cruise.ship}</p>
+                                  <h3 className="font-bold text-slate-900 leading-tight mb-1 line-clamp-2 font-roboto">{cruise.title}</h3>
+                                  <p className="text-xs text-slate-500 mb-4 font-roboto">{cruise.ship}</p>
                                   <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
                                      <div>
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold">From</p>
-                                        <p className="text-lg font-bold text-slate-800">${cruise.price}</p>
+                                        <p className="text-[10px] text-slate-400 uppercase font-bold font-roboto">From</p>
+                                        <p className="text-lg font-bold text-slate-800 font-russo">${cruise.price}</p>
                                      </div>
-                                     <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-xs font-bold text-slate-600">
+                                     <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded text-xs font-bold text-slate-600 font-roboto">
                                         <Sun className="w-3 h-3 text-orange-400" /> {cruise.nights} Nights
                                      </div>
                                   </div>
-                               </div>
+                                </div>
                             </div>
                          );
                       }) : (
-                         <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                         <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-xl font-roboto">
                             <p className="text-slate-400">No cruises found.</p>
                          </div>
                       )}
@@ -537,7 +554,7 @@ export default function CruiseApp() {
                     return (
                        <div key={item.id} onClick={() => setSelectedItem({ ...item, type: 'essential' })} className="bg-white rounded-xl p-4 border border-slate-100 hover:shadow-lg transition-all cursor-pointer group">
                           <div className="aspect-square bg-slate-50 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
-                             {item.image ? <img src={item.image} className="w-full h-full object-cover mix-blend-multiply" /> : <span className="text-2xl">🛍️</span>}
+                             {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover mix-blend-multiply" /> : <span className="text-2xl">🛍️</span>}
                              <button 
                                 onClick={(e) => { e.stopPropagation(); toggleSave(item); }}
                                 className={`absolute top-2 right-2 p-1.5 rounded-full z-10 transition-colors ${isSaved ? 'bg-[#34a4b8] text-white' : 'bg-slate-200 text-slate-400 hover:bg-slate-300'}`}
@@ -545,8 +562,8 @@ export default function CruiseApp() {
                                 {isSaved ? <Check className="w-3 h-3" /> : <ListPlus className="w-3 h-3" />}
                              </button>
                           </div>
-                          <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 mb-2 min-h-[2.5em]">{item.title}</h4>
-                          <p className="font-bold text-[#34a4b8]">${item.price}</p>
+                          <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 mb-2 min-h-[2.5em] font-roboto">{item.title}</h4>
+                          <p className="font-bold text-[#34a4b8] font-roboto">${item.price}</p>
                        </div>
                     );
                  })}
@@ -558,24 +575,24 @@ export default function CruiseApp() {
               <div className="max-w-3xl mx-auto">
                  <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                       <h3 className="font-bold text-lg text-slate-800">Your Voyage List</h3>
-                       <button onClick={handleEmail} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-2">
+                       <h3 className="font-bold text-lg text-slate-800 font-russo">Your Voyage List</h3>
+                       <button onClick={handleEmail} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors flex items-center gap-2 font-roboto">
                           <Mail className="w-3 h-3" /> Email to Me
                        </button>
                     </div>
                     <div className="divide-y divide-slate-100">
                        {savedItems.length === 0 ? (
-                          <div className="p-12 text-center text-slate-400">Your list is empty. Go explore!</div>
+                          <div className="p-12 text-center text-slate-400 font-roboto">Your list is empty. Go explore!</div>
                        ) : savedItems.map(item => (
                           <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
                              <div className="w-16 h-16 bg-slate-200 rounded-lg flex-shrink-0 overflow-hidden">
-                                {item.image ? <img src={item.image} className="w-full h-full object-cover" /> : null}
+                                {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : null}
                              </div>
                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-slate-800 truncate">{item.title}</h4>
-                                <p className="text-xs text-slate-500 uppercase">{item.type}</p>
+                                <h4 className="font-bold text-slate-800 truncate font-roboto">{item.title}</h4>
+                                <p className="text-xs text-slate-500 uppercase font-roboto">{item.type}</p>
                              </div>
-                             <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">View</a>
+                             <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline font-roboto">View</a>
                              <button onClick={() => toggleSave(item)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                           </div>
                        ))}
