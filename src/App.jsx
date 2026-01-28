@@ -435,9 +435,10 @@ export default function CruiseApp() {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
 
-            // Split ports by comma OR newline
+            // Split ports by comma OR newline, handle potential carriage returns or HTML breaks
             const rawPorts = p.acf?.ports_of_call || '';
-            const portsList = rawPorts.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+            const cleanPorts = rawPorts.replace(/<br\s*\/?>/gi, '\n');
+            const portsList = cleanPorts.split(/\r\n|\r|\n|,/).map(s => s.trim()).filter(s => s.length > 0);
 
             // Fetch 'port_keywords' for smart matching if available
             const rawKeywords = p.acf?.port_keywords || '';
