@@ -190,6 +190,11 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl text-slate-400">📷</div>
           )}
+          
+          {/* Brand Color Overlay & Blur */}
+          <div className="absolute inset-0 bg-[#34a4b8]/30 backdrop-blur-[2px]"></div>
+          
+          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
           
           <div className="absolute bottom-0 left-0 w-full p-6 text-white">
