@@ -20,7 +20,8 @@ import {
   Mail,
   Globe,
   Star,
-  Play
+  Play,
+  Clock
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -261,6 +262,11 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                                <div className="min-w-0">
                                   <p className="font-bold text-slate-800 text-xs truncate group-hover:text-teal-600">{act.title}</p>
                                   <p className="text-[10px] text-slate-500 uppercase">{act.port}</p>
+                                  {(act.duration || act.category) && (
+                                    <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
+                                      {act.category} {act.duration && `• ${act.duration}`}
+                                    </p>
+                                  )}
                                </div>
                             </a>
                          ))}
@@ -327,16 +333,11 @@ export default function CruiseApp() {
         if (cruiseRes.ok) {
           const data = await cruiseRes.json();
           setCruises(data.map(p => {
-            // Enhanced Image Finding Logic
             let imgUrl = null;
-            
-            // 1. Try ACF Main Image (Object or URL)
             if (p.acf?.main_image) {
                 if (typeof p.acf.main_image === 'string') imgUrl = p.acf.main_image;
                 else if (p.acf.main_image.url) imgUrl = p.acf.main_image.url;
             }
-            
-            // 2. Try Featured Image (Standard WP)
             if (!imgUrl && p._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
@@ -362,7 +363,6 @@ export default function CruiseApp() {
         if (essentialRes.ok) {
           const data = await essentialRes.json();
           setEssentials(data.map(p => {
-             // Essential Image Logic
              let imgUrl = null;
              if (p._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
                  imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
@@ -380,15 +380,33 @@ export default function CruiseApp() {
 
         if (activityRes.ok) {
           const data = await activityRes.json();
-          setActivities(data.map(p => ({
-            id: p.id,
-            type: 'activity',
-            title: p.title.rendered,
-            port: p.acf?.port_name || 'Unknown',
-            price: formatPrice(p.acf?.price),
-            image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-            link: p.link 
-          })));
+          setActivities(data.map(post => {
+            // Determine Port logic: destination_tag -> title parsing -> fallback
+            let portName = post.acf?.destination_tag;
+            
+            if (!portName) {
+                const lowerTitle = post.title.rendered.toLowerCase();
+                if (lowerTitle.includes('key west')) portName = 'Key West';
+                else if (lowerTitle.includes('cozumel')) portName = 'Cozumel';
+                else if (lowerTitle.includes('nassau')) portName = 'Nassau';
+                else if (lowerTitle.includes('st thomas') || lowerTitle.includes('st. thomas')) portName = 'St Thomas';
+                else if (lowerTitle.includes('miami')) portName = 'Miami';
+                else if (lowerTitle.includes('honolulu')) portName = 'Honolulu';
+                else portName = 'Destination';
+            }
+
+            return {
+              id: post.id,
+              type: 'activity',
+              title: post.title.rendered,
+              port: portName,
+              price: formatPrice(post.acf?.price),
+              image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
+              link: post.acf?.booking_url || post.link,
+              category: post.acf?.category,
+              duration: post.acf?.duration
+            };
+          }));
         }
 
       } catch (err) {
