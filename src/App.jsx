@@ -19,19 +19,20 @@ import {
   Menu,
   Mail,
   Globe,
-  Star
+  Star,
+  Play
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// Based on your CPT UI dump:
 const WP_API_BASE = 'https://cruisytravel.com/wp-json/wp/v2';
 const ENDPOINTS = {
-  CRUISES: `${WP_API_BASE}/cruises?_embed&per_page=100`, // Plural slug usually
+  CRUISES: `${WP_API_BASE}/cruises?_embed&per_page=100`, 
   ACTIVITIES: `${WP_API_BASE}/itineraries?_embed&per_page=100`,
-  ESSENTIALS: `${WP_API_BASE}/amazon_essential?_embed&per_page=100` // Singular slug based on "Edit Amazon Essential"
+  ESSENTIALS: `${WP_API_BASE}/amazon_essential?_embed&per_page=100` 
 };
 
 const BRAND_COLOR = '#34a4b8';
+const LOGO_URL = 'https://cruisytravel.com/wp-content/uploads/2024/01/cropped-20240120_025955_0000.png';
 
 // --- STATIC DATA ---
 const CRUISE_LINES = [
@@ -44,6 +45,15 @@ const CRUISE_LINES = [
   { id: 'msc', name: 'MSC Cruises', color: '#003366', logo: 'M' },
   { id: 'viking', name: 'Viking', color: '#9d8b70', logo: 'Vk' },
   { id: 'princess', name: 'Princess', color: '#005696', logo: 'P' }
+];
+
+// Placeholder for Pexels Video URLs - Replace with actual direct .mp4 links in production
+// Since Pexels page URLs don't work in <video> tags, using a reliable public domain ocean loop for demo purposes
+// You should download your videos and upload them to your media library, then put the URLs here.
+const HERO_VIDEOS = [
+  "https://player.vimeo.com/external/363656976.sd.mp4?s=346296d4d4205562d49936eb9642220b35639536&profile_id=164&oauth2_token_id=57447761", // Ocean example 1
+  "https://player.vimeo.com/external/494228790.sd.mp4?s=3847990443939632363765955675567676766767&profile_id=164", // Ocean example 2
+  "https://player.vimeo.com/external/335864380.sd.mp4?s=279c663007604a37656666666666666666666666&profile_id=164"  // Ocean example 3
 ];
 
 // --- HELPER FUNCTIONS ---
@@ -64,22 +74,65 @@ const getLineId = (name) => {
 
 const formatPrice = (price) => {
   if (!price) return '0';
-  // Remove $ if user entered it in ACF, ensure it's a number string
   return price.toString().replace('$', '');
 };
 
 // --- COMPONENTS ---
 
+const VideoHero = () => {
+  const [currentVideo, setCurrentVideo] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentVideo((prev) => (prev + 1) % HERO_VIDEOS.length);
+    }, 8000); // Change video every 8 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative h-80 md:h-96 w-full overflow-hidden rounded-b-3xl shadow-xl mb-8 group">
+      {HERO_VIDEOS.map((video, index) => (
+        <video
+          key={index}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+            index === currentVideo ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <source src={video} type="video/mp4" />
+        </video>
+      ))}
+      
+      {/* Overlay Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+
+      {/* Hero Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 z-10">
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl shadow-2xl mb-4 transform transition-transform hover:scale-105">
+          <h1 className="font-russo text-3xl md:text-5xl text-white tracking-wide drop-shadow-lg uppercase">
+            Cruise Explorer
+          </h1>
+        </div>
+        <p className="text-white/90 text-lg md:text-xl font-medium max-w-2xl drop-shadow-md">
+          Discover your perfect voyage, find exclusive experiences, and pack like a pro.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // 1. Sidebar Navigation
 const Sidebar = ({ activeTab, setActiveTab, cartCount }) => (
   <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-col h-full fixed left-0 top-0 z-50 border-r border-slate-800">
     <div className="p-6 flex items-center gap-3">
-      <div className="w-10 h-10 bg-[#34a4b8] rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-900/50">
-        <Anchor className="w-6 h-6" />
+      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border-2 border-[#34a4b8]">
+        <img src={LOGO_URL} alt="Cruisy Travel" className="w-full h-full object-cover" />
       </div>
       <div>
-        <h1 className="font-bold text-lg leading-none tracking-wide">CRUISY</h1>
-        <span className="text-[10px] uppercase tracking-widest text-slate-400">Explorer</span>
+        <h1 className="font-russo text-lg leading-none tracking-wide text-white">Cruisy <span style={{ color: BRAND_COLOR }}>Travel</span></h1>
       </div>
     </div>
 
@@ -134,15 +187,11 @@ const MobileNav = ({ activeTab, setActiveTab, cartCount }) => (
 const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   if (!item) return null;
 
-  // Find Brand Color
   const brand = type === 'cruise' ? CRUISE_LINES.find(b => b.id === item.lineId) : null;
   const accentColor = brand ? brand.color : BRAND_COLOR;
 
-  // Filter relevant activities for this cruise (Port Matching)
   const relevantActivities = type === 'cruise' && activities 
     ? activities.filter(act => {
-        // Check if activity port matches any port in cruise itinerary
-        // Note: Itinerary in WP comes as "ports_of_call" string usually
         if (!item.itinerary || !act.port) return false;
         const portString = Array.isArray(item.itinerary) ? item.itinerary.join(' ') : item.itinerary;
         return portString.toLowerCase().includes(act.port.toLowerCase());
@@ -153,10 +202,8 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="bg-slate-50 w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden relative" onClick={e => e.stopPropagation()}>
         
-        {/* Close Button */}
         <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
 
-        {/* Media Column */}
         <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-200">
           {item.image ? (
             <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
@@ -180,11 +227,9 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
           </div>
         </div>
 
-        {/* Content Column */}
         <div className="w-full md:w-7/12 flex flex-col bg-white h-full overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
             
-            {/* Cruise Specific Details */}
             {type === 'cruise' && (
               <>
                 <div className="flex items-center gap-6 text-sm border-b border-slate-100 pb-6">
@@ -219,7 +264,6 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                   </div>
                 </div>
 
-                {/* Experiences Section */}
                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                    <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
                       <Palmtree className="w-5 h-5 text-teal-600" /> Experiences in Port
@@ -243,7 +287,6 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
               </>
             )}
 
-            {/* Essential Specific Details */}
             {type === 'essential' && (
                <div>
                   <div className="flex items-center justify-between mb-6">
@@ -279,17 +322,14 @@ export default function CruiseApp() {
   
   // User State
   const [savedItems, setSavedItems] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null); // For modal
+  const [selectedItem, setSelectedItem] = useState(null); 
 
-  // --- INITIALIZATION ---
   useEffect(() => {
-    // 1. Load LocalStorage
     try {
       const saved = localStorage.getItem('cruisy_list_v2');
       if (saved) setSavedItems(JSON.parse(saved));
     } catch (e) { console.error('LS Error', e); }
 
-    // 2. Fetch Data
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -339,7 +379,7 @@ export default function CruiseApp() {
             port: p.acf?.port_name || 'Unknown',
             price: formatPrice(p.acf?.price),
             image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
-            link: p.link // Or ACF link if you have one
+            link: p.link 
           })));
         }
 
@@ -353,12 +393,10 @@ export default function CruiseApp() {
     fetchData();
   }, []);
 
-  // --- PERSISTENCE ---
   useEffect(() => {
     localStorage.setItem('cruisy_list_v2', JSON.stringify(savedItems));
   }, [savedItems]);
 
-  // --- ACTIONS ---
   const toggleSave = (item) => {
     const exists = savedItems.find(i => i.id === item.id);
     if (exists) setSavedItems(savedItems.filter(i => i.id !== item.id));
@@ -370,7 +408,6 @@ export default function CruiseApp() {
     window.location.href = `mailto:?subject=My Cruisy List&body=${encodeURIComponent(body)}`;
   };
 
-  // --- FILTERS ---
   const filteredCruises = cruises.filter(c => {
     if (selectedBrand && c.lineId !== selectedBrand.id) return false;
     if (searchQuery) {
@@ -383,40 +420,27 @@ export default function CruiseApp() {
   return (
     <div className="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
       
-      {/* --- SIDEBAR --- */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} cartCount={savedItems.length} />
 
-      {/* --- CONTENT AREA --- */}
       <main className="flex-1 ml-0 md:ml-64 relative flex flex-col h-full overflow-hidden">
         
-        {/* Header (Desktop Only) */}
-        <header className="bg-white border-b border-slate-200 px-8 py-4 hidden md:flex items-center justify-between z-20">
-           <h2 className="font-bold text-xl text-slate-800">
-              {activeTab === 'explore' && 'Find Your Voyage'}
-              {activeTab === 'essentials' && 'Travel Essentials'}
-              {activeTab === 'list' && 'Your Suitcase'}
-           </h2>
-           
-           {activeTab === 'explore' && (
-             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search ships..." 
-                  className="pl-10 pr-4 py-2 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#34a4b8]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-             </div>
-           )}
+        {/* Mobile Header (Replaces Sidebar on Mobile) */}
+        <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-20">
+           <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#34a4b8]">
+                 <img src={LOGO_URL} alt="Cruisy" className="w-full h-full object-cover" />
+              </div>
+              <h1 className="font-russo text-lg text-slate-900">Cruisy <span style={{ color: BRAND_COLOR }}>Travel</span></h1>
+           </div>
         </header>
 
-        {/* Content Scroll Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24">
            
            {/* --- TAB: EXPLORE --- */}
            {activeTab === 'explore' && (
              <>
+                <VideoHero />
+
                 {/* Brand Selector */}
                 <div className="flex gap-3 overflow-x-auto pb-4 mb-6 hide-scrollbar">
                    <button 
@@ -434,6 +458,18 @@ export default function CruiseApp() {
                          {brand.name}
                       </button>
                    ))}
+                </div>
+
+                {/* Search */}
+                <div className="relative mb-8">
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                   <input 
+                     type="text" 
+                     placeholder="Search ships, destinations..." 
+                     className="w-full pl-12 pr-4 py-3 bg-white rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#34a4b8] transition-all"
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                   />
                 </div>
 
                 {/* Loading State */}
@@ -551,10 +587,8 @@ export default function CruiseApp() {
         </div>
       </main>
 
-      {/* --- MOBILE NAV --- */}
       <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} cartCount={savedItems.length} />
 
-      {/* --- MODAL --- */}
       <DetailModal 
          item={selectedItem} 
          type={selectedItem?.type} 
