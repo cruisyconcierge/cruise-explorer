@@ -167,17 +167,24 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   const brand = type === 'cruise' ? CRUISE_LINES.find(b => b.id === item.lineId) : null;
   const accentColor = brand ? brand.color : BRAND_COLOR;
 
-  // Smart Experience Matching
-  // Looks for activities where the 'port' field matches any string in the cruise itinerary
+  // --- SMART EXPERIENCE MATCHING ---
+  // Matches if any port in the cruise itinerary *contains* the activity port name
+  // OR if the activity port name *contains* the cruise port name.
+  // This handles cases like: Cruise="Key West, FL" <-> Activity="Key West"
   const relevantActivities = type === 'cruise' && activities 
     ? activities.filter(act => {
         if (!item.itinerary || !act.port) return false;
-        // Join the entire cruise itinerary into one search string (e.g., "Miami, Key West, Nassau")
-        const itineraryString = Array.isArray(item.itinerary) ? item.itinerary.join(' ').toLowerCase() : item.itinerary.toLowerCase();
-        const activityPort = act.port.toLowerCase();
         
-        // Match if the activity port name appears in the cruise itinerary
-        return itineraryString.includes(activityPort);
+        // Normalize Activity Port
+        const actPort = act.port.toLowerCase().trim();
+        if (actPort === 'destination') return false; // Ignore generic fallback
+
+        // Check against each port in the cruise itinerary
+        return item.itinerary.some(cruisePortString => {
+            const cPort = cruisePortString.toLowerCase().trim();
+            // Bidirectional check for maximum compatibility
+            return cPort.includes(actPort) || actPort.includes(cPort);
+        });
       })
     : [];
 
@@ -350,6 +357,10 @@ export default function CruiseApp() {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
 
+            // Split ports by comma OR newline to handle different input formats
+            const rawPorts = p.acf?.ports_of_call || '';
+            const portsList = rawPorts.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+
             return {
               id: p.id,
               type: 'cruise',
@@ -358,7 +369,7 @@ export default function CruiseApp() {
               ship: p.acf?.ship_name || 'Cruise Ship',
               price: formatPrice(p.acf?.price),
               nights: p.acf?.nights || '7',
-              itinerary: p.acf?.ports_of_call ? p.acf.ports_of_call.split(',').map(s => s.trim()) : [],
+              itinerary: portsList,
               realImage: imgUrl,
               link: p.acf?.affiliate_link || '#',
               description: p.acf?.description || '',
