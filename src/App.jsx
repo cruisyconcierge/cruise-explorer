@@ -21,7 +21,8 @@ import {
   Globe,
   Star,
   Play,
-  Clock
+  Clock,
+  Heart
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -50,6 +51,8 @@ const CRUISE_LINES = [
 
 // Updated Hero Image
 const HERO_IMAGE_URL = "https://images.pexels.com/photos/4092994/pexels-photo-4092994.jpeg?auto=compress&cs=tinysrgb&w=1600";
+// Stock Ocean Image for Detail View (High Quality)
+const DETAIL_FALLBACK_IMAGE = "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&q=80&w=1200";
 
 // --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
@@ -162,6 +165,8 @@ const MobileNav = ({ activeTab, setActiveTab, cartCount }) => (
 
 // 3. Detail Modal
 const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
+  const [activeTab, setActiveTab] = useState('overview'); // overview, itinerary, experiences, gear
+
   if (!item) return null;
 
   const brand = type === 'cruise' ? CRUISE_LINES.find(b => b.id === item.lineId) : null;
@@ -170,25 +175,28 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   // --- SMART EXPERIENCE MATCHING ---
   const relevantActivities = type === 'cruise' && activities 
     ? activities.filter(act => {
-        // Source of ports to match against: 'port_keywords' (ACF) preferred, 'itinerary' (ACF ports_of_call) fallback
         const matchSource = (item.portKeywords && item.portKeywords.length > 0) 
             ? item.portKeywords 
             : item.itinerary;
 
         if (!matchSource || !act.port) return false;
         
-        // Normalize Activity Port
         const actPort = act.port.toLowerCase().trim();
         if (actPort === 'destination' || actPort === 'unknown') return false; 
 
-        // Check against matching source
         return matchSource.some(cruisePortString => {
             const cPort = cruisePortString.toLowerCase().trim();
-            // Bidirectional check
             return cPort.includes(actPort) || actPort.includes(cPort);
         });
       })
     : [];
+
+  // Filter unique ports for display
+  const uniquePorts = Array.isArray(item.itinerary) ? [...new Set(item.itinerary.filter(stop => 
+    !stop.toLowerCase().includes('sea day') && 
+    !stop.toLowerCase().includes('embark') &&
+    !stop.toLowerCase().includes('disembark')
+  ))] : [];
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -196,12 +204,9 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
         
         <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
 
-        <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-200">
-          {item.realImage ? (
-            <img src={item.realImage} alt={item.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl text-slate-400">📷</div>
-          )}
+        <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-900">
+          {/* Always use high quality stock image for detail header for better aesthetic */}
+          <img src={DETAIL_FALLBACK_IMAGE} alt={item.title} className="w-full h-full object-cover opacity-90" />
           
           {/* Brand Color Overlay & Blur */}
           <div className="absolute inset-0 bg-[#34a4b8]/30 backdrop-blur-[2px]"></div>
@@ -211,87 +216,158 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
           
           <div className="absolute bottom-0 left-0 w-full p-6 text-white">
             {type === 'cruise' && <span className="px-2 py-1 rounded bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider mb-2 inline-block border border-white/10">{item.ship}</span>}
-            <h2 className="font-russo text-2xl md:text-3xl leading-tight mb-2">{item.title}</h2>
+            <h2 className="font-russo text-2xl md:text-3xl leading-tight mb-2 text-white drop-shadow-md">{item.title}</h2>
             
             <div className="flex gap-3 mt-4">
-              <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-white text-slate-900 rounded-xl font-bold text-center text-sm hover:bg-slate-100 transition-colors shadow-lg">
+              <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-white text-slate-900 rounded-xl font-bold text-center text-sm hover:bg-slate-100 transition-colors shadow-lg flex items-center justify-center">
                 View Deal <ExternalLink className="w-3 h-3 inline ml-1" />
               </a>
-              <button onClick={() => onSave(item)} className={`px-4 rounded-xl border border-white/30 hover:bg-white/10 flex items-center justify-center text-white transition-colors ${isSaved ? 'bg-teal-500/50 border-teal-500' : ''}`}>
-                {isSaved ? <Check className="w-5 h-5" /> : <ListPlus className="w-5 h-5" />}
+              <button 
+                onClick={() => onSave(item)} 
+                className={`px-4 rounded-xl font-bold flex items-center justify-center transition-colors shadow-lg border border-white/20 ${isSaved ? 'bg-white text-red-500 hover:bg-red-50' : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-md'}`}
+              >
+                <Heart className={`w-6 h-6 ${isSaved ? 'fill-current' : ''}`} />
               </button>
             </div>
           </div>
         </div>
 
         <div className="w-full md:w-7/12 flex flex-col bg-white h-full overflow-hidden">
+          {/* Tabs */}
+          {type === 'cruise' && (
+            <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar">
+               {[
+                 { id: 'overview', label: 'Overview', icon: Star },
+                 { id: 'itinerary', label: 'Itinerary', icon: MapPin },
+                 { id: 'experiences', label: 'Experiences', icon: Palmtree },
+                 { id: 'gear', label: 'Gear', icon: ShoppingBag }
+               ].map(tab => (
+                 <button 
+                   key={tab.id}
+                   onClick={() => setActiveTab(tab.id)}
+                   className={`flex items-center gap-2 px-6 py-4 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id ? 'border-teal-500 text-teal-600 bg-teal-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                 >
+                   <tab.icon className="w-4 h-4" /> {tab.label}
+                 </button>
+               ))}
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
             
             {type === 'cruise' && (
               <>
-                <div className="flex items-center gap-6 text-sm border-b border-slate-100 pb-6">
-                  <div>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase">Price</p>
-                    <p className="font-bold text-slate-900 text-lg font-russo">${item.price}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase">Duration</p>
-                    <p className="font-bold text-slate-900 flex items-center gap-1"><Sun className="w-4 h-4 text-orange-400" /> {item.nights || 7} Nights</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase">Vibe</p>
-                    <p className="font-bold text-slate-900">{item.vibe || 'Relaxing'}</p>
-                  </div>
-                </div>
+                {activeTab === 'overview' && (
+                  <div className="animate-fade-in">
+                    <div className="flex items-center gap-6 text-sm border-b border-slate-100 pb-6 mb-6">
+                      <div>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase">Price</p>
+                        <p className="font-bold text-slate-900 text-lg font-russo">${item.price}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase">Duration</p>
+                        <p className="font-bold text-slate-900 flex items-center gap-1"><Sun className="w-4 h-4 text-orange-400" /> {item.nights || 7} Nights</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase">Vibe</p>
+                        <p className="font-bold text-slate-900">{item.vibe || 'Relaxing'}</p>
+                      </div>
+                    </div>
 
-                <div>
-                  <h3 className="font-russo text-slate-900 text-lg mb-3">About this Voyage</h3>
-                  <div className="prose prose-sm text-slate-600 leading-relaxed font-roboto" dangerouslySetInnerHTML={{ __html: item.description || 'No description available.' }}></div>
-                </div>
+                    <div>
+                      <h3 className="font-russo text-slate-900 text-lg mb-3">About this Voyage</h3>
+                      <div className="prose prose-sm text-slate-600 leading-relaxed font-roboto" dangerouslySetInnerHTML={{ __html: item.description || 'No description available.' }}></div>
+                    </div>
 
-                <div>
-                  <h3 className="font-russo text-slate-900 text-lg mb-4">Itinerary</h3>
-                  <div className="space-y-4 relative pl-4 border-l-2 border-slate-100">
+                    <div className="mt-8">
+                      <h3 className="font-russo text-slate-900 text-lg mb-3">Ports of Call</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {uniquePorts.map(port => (
+                          <button 
+                            key={port} 
+                            onClick={() => setActiveTab('experiences')}
+                            className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold border border-teal-100 hover:bg-teal-100 transition-colors flex items-center gap-1"
+                          >
+                            <Anchor className="w-3 h-3" /> {port}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'itinerary' && (
+                  <div className="space-y-4 relative pl-4 border-l-2 border-slate-100 animate-fade-in">
                     {Array.isArray(item.itinerary) && item.itinerary.map((port, i) => (
                       <div key={i} className="relative">
                         <div className="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: accentColor }}></div>
-                        <p className="text-sm font-medium text-slate-800">{port}</p>
+                        <p className="text-base font-bold text-teal-700">{port}</p>
+                        <p className="text-xs text-slate-400 font-bold uppercase">Day {i + 1}</p>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
 
-                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                   <h3 className="font-russo text-slate-900 text-lg mb-4 flex items-center gap-2">
-                      <Palmtree className="w-5 h-5 text-teal-600" /> Experiences in Port
-                   </h3>
-                   {relevantActivities.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                         {relevantActivities.map(act => (
-                            <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
-                               <div className="flex justify-between items-start">
-                                  <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
-                                  <span className="text-[10px] uppercase font-bold text-slate-400">{act.port}</span>
-                               </div>
+                {activeTab === 'experiences' && (
+                  <div className="animate-fade-in">
+                     <h3 className="font-russo text-slate-900 text-lg mb-4 flex items-center gap-2">
+                        <Palmtree className="w-5 h-5 text-teal-600" /> Experiences in Port
+                     </h3>
+                     <p className="text-sm text-slate-500 mb-6">Explore curated activities for your stops.</p>
+                     
+                     {relevantActivities.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                           {relevantActivities.map(act => (
+                              <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
+                                 <div className="flex justify-between items-start">
+                                    <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                                    <span className="text-xs font-black uppercase text-teal-600 tracking-wide bg-teal-50 px-2 py-1 rounded">{act.port}</span>
+                                 </div>
+                                 <div className="min-w-0">
+                                    <p className="font-bold text-slate-800 text-xs line-clamp-2 group-hover:text-teal-600">{act.title}</p>
+                                    {(act.category || act.duration) && (
+                                      <p className="text-[10px] text-slate-500 mt-1">
+                                        {act.category} {act.duration && `• ${act.duration}`}
+                                      </p>
+                                    )}
+                                 </div>
+                                 <div className="mt-auto pt-2 border-t border-slate-50 flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-700">${act.price}</span>
+                                    <span className="text-[10px] font-bold text-teal-600 hover:underline flex items-center gap-1">Book <ExternalLink className="w-3 h-3" /></span>
+                                 </div>
+                              </a>
+                           ))}
+                        </div>
+                     ) : (
+                        <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                           <Anchor className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                           <p className="text-sm text-slate-400 italic">No specific shore excursions found for these ports in our database.</p>
+                        </div>
+                     )}
+                  </div>
+                )}
+
+                {activeTab === 'gear' && (
+                   <div className="animate-fade-in">
+                      <h3 className="font-russo text-slate-900 text-lg mb-4 flex items-center gap-2">
+                         <ShoppingBag className="w-5 h-5 text-orange-500" /> Recommended Gear
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                         {item.amazonJson && item.amazonJson.map((gear, idx) => (
+                            <a key={idx} href={gear.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:shadow-sm transition-all flex items-center gap-3">
+                               <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-2xl">🛍️</div>
                                <div className="min-w-0">
-                                  <p className="font-bold text-slate-800 text-xs line-clamp-2 group-hover:text-teal-600">{act.title}</p>
-                                  {(act.category || act.duration) && (
-                                    <p className="text-[10px] text-slate-500 mt-1">
-                                      {act.category} {act.duration && `• ${act.duration}`}
-                                    </p>
-                                  )}
-                               </div>
-                               <div className="mt-auto pt-2 border-t border-slate-50 flex justify-between items-center">
-                                  <span className="text-xs font-bold text-slate-700">${act.price}</span>
-                                  <span className="text-[10px] font-bold text-teal-600 hover:underline flex items-center gap-1">Book <ExternalLink className="w-3 h-3" /></span>
+                                  <p className="text-xs font-bold text-slate-700 truncate">{gear.title || 'Travel Item'}</p>
+                                  <p className="text-[10px] text-orange-500 font-bold mt-0.5">Amazon</p>
                                </div>
                             </a>
                          ))}
+                         {(!item.amazonJson || item.amazonJson.length === 0) && (
+                            <p className="col-span-2 text-sm text-slate-400">Check the main Essentials tab for general packing lists.</p>
+                         )}
                       </div>
-                   ) : (
-                      <p className="text-sm text-slate-400 italic">No specific shore excursions found matching your {item.portKeywords ? 'port keywords' : 'itinerary ports'} yet. Make sure to add `port_keywords` to your Cruise CPT!</p>
-                   )}
-                </div>
+                   </div>
+                )}
               </>
             )}
 
@@ -381,7 +457,8 @@ export default function CruiseApp() {
               link: p.acf?.affiliate_link || '#',
               description: p.acf?.description || '',
               vibe: p.acf?.travel_vibe,
-              rating: p.acf?.rating
+              rating: p.acf?.rating,
+              amazonJson: p.acf?.amazon_json ? JSON.parse(p.acf.amazon_json) : []
             };
           }));
         }
