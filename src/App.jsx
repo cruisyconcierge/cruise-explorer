@@ -574,6 +574,7 @@ export default function CruiseApp() {
            #print-section, #print-section * { visibility: visible; }
            #print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; }
            @page { size: auto; margin: 10mm; }
+           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -764,43 +765,116 @@ export default function CruiseApp() {
       />
       
       {/* --- PRINT LAYOUT (Hidden on screen) --- */}
-      <div id="print-section" className="hidden">
-         <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-300">
-             <div className="flex items-center gap-3">
-                 <img src={LOGO_URL} className="h-12 w-12" alt="Logo" />
-                 <h1 className="font-russo text-2xl text-[#34a4b8]">Cruisy Travel</h1>
+      <div id="print-section" className="hidden font-roboto">
+         {/* Header */}
+         <div className="flex justify-between items-end mb-8 pb-6 border-b-4 border-[#34a4b8]">
+             <div className="flex items-center gap-4">
+                 <div className="w-16 h-16 rounded-xl border-2 border-[#34a4b8] p-1">
+                    <img src={LOGO_URL} className="w-full h-full object-cover rounded-lg" alt="Logo" />
+                 </div>
+                 <div>
+                    <h1 className="font-russo text-4xl text-[#34a4b8] uppercase tracking-wide">Cruisy Travel</h1>
+                    <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">My Voyage Plan</p>
+                 </div>
              </div>
              <div className="text-right">
-                 <h2 className="font-bold text-xl uppercase">My Voyage List</h2>
+                 <p className="text-sm text-slate-400">Generated on {new Date().toLocaleDateString()}</p>
              </div>
          </div>
          
-         <div className="grid grid-cols-1 gap-6">
-            {savedItems.map(item => (
-                <div key={item.id} className="flex border border-gray-200 rounded-lg p-4 gap-4 break-inside-avoid">
-                    <div className="w-24 h-24 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
-                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : null}
-                    </div>
-                    <div className="flex-grow">
-                        <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-                        <p className="text-sm text-gray-500 mb-2 uppercase tracking-wide">{item.type}</p>
-                        {item.type === 'cruise' && <p className="text-sm">Ship: {item.ship} | Nights: {item.nights}</p>}
-                        {item.price && <p className="font-bold text-[#34a4b8]">${item.price}</p>}
-                        <p className="text-xs text-gray-400 mt-2">{item.link}</p>
-                    </div>
-                    <div className="w-24 flex flex-col items-center justify-center border-l border-gray-100 pl-4">
-                        {item.qrCode ? (
-                           <img src={item.qrCode} className="w-20 h-20" alt="QR" />
-                        ) : (
-                           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(item.link)}`} className="w-20 h-20" alt="Scan to Book" />
-                        )}
-                        <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Scan to Book</span>
-                    </div>
-                </div>
-            ))}
+         {/* Content Grouping */}
+         <div className="space-y-10">
+            {/* Cruises */}
+            {savedItems.filter(i => i.type === 'cruise').length > 0 && (
+               <section>
+                  <h2 className="font-russo text-2xl text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                     <span className="text-[#34a4b8]">⚓</span> Voyages
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4">
+                     {savedItems.filter(i => i.type === 'cruise').map(item => (
+                        <div key={item.id} className="flex border border-slate-200 rounded-xl p-4 gap-6 break-inside-avoid bg-slate-50">
+                           <div className="w-32 h-24 bg-white rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
+                               {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl">🚢</div>}
+                           </div>
+                           <div className="flex-grow">
+                              <h3 className="font-russo text-xl text-slate-900 mb-1">{item.title}</h3>
+                              <p className="text-sm text-slate-600 font-bold mb-1">{item.ship} <span className="mx-2 text-slate-300">|</span> {item.nights} Nights</p>
+                              <div className="text-xs text-slate-500 mb-2">
+                                 {Array.isArray(item.itinerary) ? item.itinerary.join(' • ') : item.itinerary}
+                              </div>
+                              <p className="font-bold text-[#34a4b8] text-lg">${item.price}</p>
+                           </div>
+                           <div className="w-32 flex flex-col items-center justify-center border-l border-slate-200 pl-6">
+                               <img src={item.qrCode || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(item.link)}`} className="w-24 h-24" alt="Scan to Book" />
+                               <span className="text-[9px] uppercase font-bold text-slate-400 mt-2 tracking-wide">Scan to Book</span>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </section>
+            )}
+
+            {/* Activities */}
+            {savedItems.filter(i => i.type === 'activity').length > 0 && (
+               <section>
+                  <h2 className="font-russo text-2xl text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                     <span className="text-[#34a4b8]">🌴</span> Port Experiences
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4">
+                     {savedItems.filter(i => i.type === 'activity').map(item => (
+                        <div key={item.id} className="flex border border-slate-200 rounded-xl p-4 gap-6 break-inside-avoid bg-white">
+                           <div className="w-24 h-24 bg-teal-50 rounded-lg flex items-center justify-center text-4xl flex-shrink-0 border border-teal-100">
+                               {item.image || '🌴'}
+                           </div>
+                           <div className="flex-grow">
+                              <h3 className="font-russo text-lg text-slate-900 mb-1">{item.title}</h3>
+                              <p className="text-xs font-black uppercase text-[#34a4b8] tracking-wide mb-2">{item.port}</p>
+                              <p className="text-sm text-slate-600 line-clamp-2">{item.category} {item.duration && `• ${item.duration}`}</p>
+                              <p className="font-bold text-slate-800 mt-2">${item.price}</p>
+                           </div>
+                           <div className="w-32 flex flex-col items-center justify-center border-l border-slate-200 pl-6">
+                               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(item.link)}`} className="w-24 h-24" alt="Book Now" />
+                               <span className="text-[9px] uppercase font-bold text-slate-400 mt-2 tracking-wide">Scan to Book</span>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </section>
+            )}
+
+            {/* Essentials */}
+            {savedItems.filter(i => i.type === 'essential').length > 0 && (
+               <section>
+                  <h2 className="font-russo text-2xl text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                     <span className="text-orange-500">🛍️</span> Essentials
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                     {savedItems.filter(i => i.type === 'essential').map(item => (
+                        <div key={item.id} className="flex border border-slate-200 rounded-xl p-3 gap-3 break-inside-avoid bg-white">
+                           <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 border border-slate-100 overflow-hidden">
+                               {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
+                           </div>
+                           <div className="flex-grow min-w-0">
+                              <h3 className="font-bold text-sm text-slate-900 mb-1 truncate">{item.title}</h3>
+                              <p className="font-bold text-[#34a4b8] text-sm mb-2">${item.price}</p>
+                              <div className="flex items-center gap-2">
+                                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(item.link)}`} className="w-12 h-12 border border-slate-100 p-1" alt="Amazon" />
+                                <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight">Scan for<br/>Amazon</span>
+                              </div>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </section>
+            )}
          </div>
-         <div className="mt-8 pt-4 border-t border-gray-300 text-center text-sm text-gray-500">
-             <p>Ready to book? Scan the codes above or visit www.cruisytravel.com</p>
+
+         <div className="mt-12 pt-8 border-t-2 border-slate-100 text-center">
+             <p className="font-russo text-lg text-slate-800 mb-2">Ready to set sail?</p>
+             <p className="text-slate-500 text-sm mb-4">Visit www.cruisytravel.com to confirm bookings and get travel support.</p>
+             <div className="flex items-center justify-center gap-2 text-xs text-slate-400 uppercase tracking-widest font-bold">
+                <span>Explore</span> • <span>Plan</span> • <span>Book</span>
+             </div>
          </div>
       </div>
 
