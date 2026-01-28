@@ -17,7 +17,9 @@ import {
   ArrowLeft,
   Search,
   Menu,
-  Mail
+  Mail,
+  Map,
+  Info
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -187,17 +189,189 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail }) => {
   );
 };
 
+const DetailModal = ({ cruise, brand, activities, onClose, onSave, isSaved, onSaveActivity, savedActivityIds }) => {
+  const [activeTab, setActiveTab] = useState('overview'); // overview, itinerary, experiences, gear
+
+  if (!cruise || !brand) return null;
+
+  // Filter unique ports
+  const uniquePorts = [...new Set(cruise.itinerary.filter(stop => 
+    !stop.toLowerCase().includes('sea day') && 
+    !stop.toLowerCase().includes('embark') &&
+    !stop.toLowerCase().includes('disembark')
+  ))];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div className="bg-white w-full max-w-5xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col md:flex-row relative">
+        <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-white/50 hover:bg-white rounded-full transition-colors"><X className="w-6 h-6 text-slate-800" /></button>
+        
+        {/* Left Side: Visuals & Pricing (Fixed) */}
+        <div className="w-full md:w-1/3 bg-slate-100 relative flex flex-col">
+          <div className="relative flex-grow">
+            <div className="absolute inset-0">
+               {cruise.realImage ? <img src={cruise.realImage} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-9xl">{cruise.image}</div>}
+               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+            </div>
+            <div className="absolute bottom-6 left-6 text-white pr-6">
+              <h2 className="font-russo text-3xl leading-none mb-1 shadow-black drop-shadow-md">{cruise.title}</h2>
+              <p className="text-lg opacity-90">{cruise.ship}</p>
+            </div>
+          </div>
+          <div className="bg-slate-900 text-white p-6">
+             <div className="flex justify-between items-center mb-4">
+               <div>
+                 <p className="text-[10px] uppercase font-bold text-slate-400">Starting From</p>
+                 <p className="text-3xl font-russo">${cruise.price}</p>
+               </div>
+               <div className="text-right">
+                 <p className="text-[10px] uppercase font-bold text-slate-400">Duration</p>
+                 <p className="font-bold flex items-center justify-end gap-1"><Sun className="w-4 h-4 text-orange-400" /> {cruise.nights} Nights</p>
+               </div>
+             </div>
+             <div className="flex flex-col gap-2">
+                <a href={cruise.affiliateLink} target="_blank" rel="noopener noreferrer" className="w-full py-3 rounded-xl font-bold text-white text-center shadow-lg hover:brightness-110 transition-all" style={{ backgroundColor: brand.color }}>
+                  View Deal <ExternalLink className="w-4 h-4 inline ml-1" />
+                </a>
+                <button onClick={() => onSave(cruise)} className={`w-full py-3 rounded-xl font-bold border border-white/20 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm`}>
+                  {isSaved ? <><Check className="w-4 h-4" /> Saved</> : <><ListPlus className="w-4 h-4" /> Save to List</>}
+                </button>
+             </div>
+          </div>
+        </div>
+
+        {/* Right Side: Tabbed Content */}
+        <div className="w-full md:w-2/3 flex flex-col bg-white">
+          {/* Internal Navigation */}
+          <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar">
+             {[
+               { id: 'overview', label: 'Overview', icon: Info },
+               { id: 'itinerary', label: 'Itinerary', icon: Map },
+               { id: 'experiences', label: 'Port Experiences', icon: Palmtree },
+               { id: 'gear', label: 'Gear', icon: ShoppingBag }
+             ].map(tab => (
+               <button 
+                 key={tab.id}
+                 onClick={() => setActiveTab(tab.id)}
+                 className={`flex items-center gap-2 px-6 py-4 font-bold text-sm whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id ? 'border-teal-500 text-teal-600 bg-teal-50/50' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+               >
+                 <tab.icon className="w-4 h-4" /> {tab.label}
+               </button>
+             ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-8">
+             {activeTab === 'overview' && (
+               <div className="space-y-6 animate-fade-in">
+                  <div className="flex flex-wrap gap-3">
+                     <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {cruise.season}</div>
+                     <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-1"><MapPin className="w-3 h-3" /> {cruise.port}</div>
+                  </div>
+                  <div className="prose prose-sm text-slate-600">
+                     <h3 className="font-russo text-lg text-slate-800 mb-2">About this Voyage</h3>
+                     <p dangerouslySetInnerHTML={{ __html: cruise.description }}></p>
+                  </div>
+               </div>
+             )}
+
+             {activeTab === 'itinerary' && (
+               <div className="space-y-6 animate-fade-in">
+                  <h3 className="font-russo text-lg text-slate-800">Daily Schedule</h3>
+                  <div className="relative pl-6 border-l-2 border-slate-100 space-y-8">
+                    {cruise.itinerary.map((stop, i) => (
+                      <div key={i} className="relative">
+                         <div className="absolute -left-[29px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: brand.color }}></div>
+                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Day {i + 1}</p>
+                         <p className="text-slate-800 font-bold text-lg">{stop}</p>
+                      </div>
+                    ))}
+                  </div>
+               </div>
+             )}
+
+             {activeTab === 'experiences' && (
+               <div className="space-y-8 animate-fade-in">
+                  <div className="bg-teal-50 p-4 rounded-xl border border-teal-100 text-sm text-teal-800 mb-6">
+                     Discover things to do in each port of call. Add them to your list to plan your perfect shore day.
+                  </div>
+                  
+                  {uniquePorts.map(port => {
+                     // Filter activities for this specific port
+                     const portActivities = activities.filter(a => a.port && a.port.toLowerCase().includes(port.toLowerCase()));
+                     
+                     return (
+                        <div key={port} className="border-b border-slate-100 pb-6 last:border-0">
+                           <h4 className="font-russo text-lg text-slate-800 mb-4 flex items-center gap-2"><Anchor className="w-4 h-4 text-slate-400" /> {port}</h4>
+                           {portActivities.length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                 {portActivities.map(act => {
+                                    const isActSaved = savedActivityIds.includes(act.id);
+                                    return (
+                                       <div key={act.id} className="bg-white border border-slate-200 rounded-xl p-3 hover:shadow-md transition-all group">
+                                          <div className="flex justify-between items-start mb-2">
+                                             <div className="text-2xl bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center">{act.image}</div>
+                                             <button onClick={() => onSaveActivity(act)} className={`p-1.5 rounded-full transition-colors ${isActSaved ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-teal-100 hover:text-teal-600'}`}>
+                                                {isActSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
+                                             </button>
+                                          </div>
+                                          <h5 className="font-bold text-slate-800 text-sm leading-tight mb-2 line-clamp-2">{act.title}</h5>
+                                          <div className="flex justify-between items-center text-xs">
+                                             <span className="font-bold text-slate-500">${act.price}</span>
+                                             <a href={act.link} target="_blank" rel="noopener noreferrer" className="text-teal-600 font-bold hover:underline">Book &rarr;</a>
+                                          </div>
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           ) : (
+                              <p className="text-sm text-slate-400 italic">No specific activities listed for this port yet.</p>
+                           )}
+                        </div>
+                     );
+                  })}
+               </div>
+             )}
+
+             {activeTab === 'gear' && (
+               <div className="animate-fade-in">
+                  <h3 className="font-russo text-lg text-slate-800 mb-4">Packing Essentials</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                     {cruise.amazonJson && cruise.amazonJson.map((item, idx) => (
+                        <a key={idx} href={item.link || '#'} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:shadow-md transition-all flex items-center gap-3">
+                           <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-2xl">🛍️</div>
+                           <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-700 truncate">{item.title || 'Travel Item'}</p>
+                              <p className="text-[10px] text-orange-500 font-bold mt-0.5">Amazon</p>
+                           </div>
+                        </a>
+                     ))}
+                     {(!cruise.amazonJson || cruise.amazonJson.length === 0) && (
+                        <p className="col-span-2 text-sm text-slate-400">Check the main Essentials tab for general packing lists.</p>
+                     )}
+                  </div>
+               </div>
+             )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CruiseExplorer() {
-  const [view, setView] = useState('home'); // home, line_view
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [internalTab, setInternalTab] = useState('voyages'); // voyages, essentials
   const [showList, setShowList] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Data
   const [cruises, setCruises] = useState(MOCK_ITINERARIES);
   const [activities, setActivities] = useState(MOCK_ACTIVITIES);
+  const [essentials, setEssentials] = useState(MOCK_ESSENTIALS);
   const [savedItems, setSavedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [viewingCruise, setViewingCruise] = useState(null);
 
   // --- Init ---
   useEffect(() => {
@@ -228,7 +402,8 @@ export default function CruiseExplorer() {
             itinerary: post.acf?.ports_of_call ? post.acf.ports_of_call.split(',').map(s => s.trim()) : [],
             affiliateLink: post.acf?.affiliate_link || '#',
             amazonJson: post.acf?.amazon_json ? JSON.parse(post.acf.amazon_json) : [],
-            rating: post.acf?.rating
+            rating: post.acf?.rating,
+            season: post.acf?.sailing_season || 'Year Round'
           }));
           setCruises(mapped);
         }
@@ -263,13 +438,12 @@ export default function CruiseExplorer() {
   // --- Handlers ---
   const handleSelectBrand = (brand) => {
     setSelectedBrand(brand);
-    setView('line_view');
+    setInternalTab('voyages');
     window.scrollTo(0, 0);
   };
 
   const handleBack = () => {
     setSelectedBrand(null);
-    setView('home');
   };
 
   const toggleSave = (item) => {
@@ -298,31 +472,14 @@ export default function CruiseExplorer() {
   return (
     <div className="min-h-screen bg-slate-900 font-roboto text-slate-100 overflow-x-hidden selection:bg-teal-500 selection:text-white">
       
-      {/* Styles & Animation */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Russo+One&display=swap');
         .font-russo { font-family: 'Russo One', sans-serif; }
         .font-roboto { font-family: 'Roboto', sans-serif; }
-        
-        .bg-ocean-gradient {
-          background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
-        }
-        
-        .glass-panel {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
+        .bg-ocean-gradient { background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%); }
+        .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-          100% { transform: translateY(0px); }
-        }
-        .animate-float { animation: float 4s ease-in-out infinite; }
         .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
@@ -340,7 +497,7 @@ export default function CruiseExplorer() {
           </div>
 
           <div className="flex items-center gap-4">
-             {view === 'line_view' && (
+             {selectedBrand && (
                 <button onClick={handleBack} className="hidden md:flex items-center gap-1 text-sm font-bold text-slate-400 hover:text-white transition-colors">
                    <ArrowLeft className="w-4 h-4" /> All Lines
                 </button>
@@ -355,7 +512,7 @@ export default function CruiseExplorer() {
       <main className="pt-20 pb-10 min-h-screen bg-ocean-gradient">
         
         {/* --- VIEW: HOME (Brand Selection) --- */}
-        {view === 'home' && (
+        {!selectedBrand && (
           <div className="max-w-7xl mx-auto px-4 animate-fade-in">
              <div className="text-center py-10">
                 <h2 className="font-russo text-4xl md:text-5xl text-white mb-4 drop-shadow-lg">Find Your Perfect Voyage</h2>
@@ -388,8 +545,8 @@ export default function CruiseExplorer() {
           </div>
         )}
 
-        {/* --- VIEW: LINE DETAILS (Voyages & Essentials) --- */}
-        {view === 'line_view' && selectedBrand && (
+        {/* --- VIEW: LINE DETAILS (Condensing: Tabs for Voyages / Essentials) --- */}
+        {selectedBrand && (
            <div className="max-w-7xl mx-auto px-4 animate-fade-in">
               
               {/* Brand Header */}
@@ -402,33 +559,50 @@ export default function CruiseExplorer() {
                     </div>
                     <p className="text-slate-300 text-sm">{selectedBrand.slogan}</p>
                  </div>
-                 <div className="z-10 w-full md:w-auto relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                       type="text" 
-                       placeholder="Search itineraries..." 
-                       className="w-full md:w-64 bg-black/30 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                       value={searchQuery}
-                       onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                 </div>
               </div>
 
-              {/* Section: Voyages */}
-              <div className="mb-12">
-                 <h3 className="font-russo text-xl text-white mb-4 flex items-center gap-2"><Ship className="w-5 h-5 text-teal-400" /> Available Voyages</h3>
-                 
-                 {/* Horizontal Scroll on Mobile */}
-                 <div className="flex flex-col gap-4">
+              {/* Tabs for Condensing View */}
+              <div className="flex gap-4 mb-6 border-b border-white/10">
+                 <button 
+                    onClick={() => setInternalTab('voyages')}
+                    className={`pb-3 px-4 text-sm font-bold transition-colors border-b-2 ${internalTab === 'voyages' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+                 >
+                    Voyages
+                 </button>
+                 <button 
+                    onClick={() => setInternalTab('essentials')}
+                    className={`pb-3 px-4 text-sm font-bold transition-colors border-b-2 ${internalTab === 'essentials' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400 hover:text-white'}`}
+                 >
+                    Essentials
+                 </button>
+              </div>
+
+              {/* Tab Content: VOYAGES */}
+              {internalTab === 'voyages' && (
+                 <div className="animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                       <h3 className="font-russo text-xl text-white flex items-center gap-2"><Ship className="w-5 h-5 text-teal-400" /> Available Voyages</h3>
+                       <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                          <input 
+                             type="text" 
+                             placeholder="Search..." 
+                             className="bg-black/30 border border-white/10 rounded-lg py-1.5 pl-8 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                             value={searchQuery}
+                             onChange={(e) => setSearchQuery(e.target.value)}
+                          />
+                       </div>
+                    </div>
+                    
                     {isLoading ? (
                        <div className="text-center py-12 text-slate-500">Loading voyages...</div>
                     ) : (
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                           {filteredCruises.length > 0 ? filteredCruises.map(cruise => {
                              const isSaved = savedItems.find(i => i.id === cruise.id);
                              return (
                                 <div key={cruise.id} className="glass-panel rounded-2xl overflow-hidden hover:border-teal-500/50 transition-all duration-300 group flex flex-col">
-                                   <div className="h-48 relative overflow-hidden bg-slate-800">
+                                   <div className="h-40 relative overflow-hidden bg-slate-800">
                                       {cruise.realImage ? (
                                          <img src={cruise.realImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={cruise.title} />
                                       ) : (
@@ -458,14 +632,12 @@ export default function CruiseExplorer() {
                                             <p className="text-[10px] text-slate-500 uppercase font-bold">Starting From</p>
                                             <p className="text-xl font-russo text-white">${cruise.price}</p>
                                          </div>
-                                         <a 
-                                            href={cruise.affiliateLink} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
+                                         <button 
+                                            onClick={() => setViewingCruise(cruise)}
                                             className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-colors shadow-lg shadow-teal-900/20"
                                          >
-                                            View Deal
-                                         </a>
+                                            View & Plan
+                                         </button>
                                       </div>
                                    </div>
                                 </div>
@@ -478,15 +650,13 @@ export default function CruiseExplorer() {
                        </div>
                     )}
                  </div>
-              </div>
+              )}
 
-              {/* Section: Experiences & Essentials Split */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-                 
-                 {/* Essentials */}
-                 <div>
+              {/* Tab Content: ESSENTIALS */}
+              {internalTab === 'essentials' && (
+                 <div className="animate-fade-in">
                     <h3 className="font-russo text-xl text-white mb-4 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-orange-400" /> Voyage Essentials</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-12">
                        {MOCK_ESSENTIALS.map(item => {
                           const isSaved = savedItems.find(i => i.id === item.id);
                           return (
@@ -507,33 +677,7 @@ export default function CruiseExplorer() {
                        })}
                     </div>
                  </div>
-
-                 {/* Experiences */}
-                 <div>
-                    <h3 className="font-russo text-xl text-white mb-4 flex items-center gap-2"><Palmtree className="w-5 h-5 text-green-400" /> Top Experiences</h3>
-                    <div className="space-y-3">
-                       {activities.slice(0, 3).map(activity => {
-                          const isSaved = savedItems.find(i => i.id === activity.id);
-                          return (
-                             <div key={activity.id} className="glass-panel p-3 rounded-xl flex items-center gap-4 relative group hover:bg-white/5 transition-colors">
-                                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center text-xl flex-shrink-0">{activity.image}</div>
-                                <div className="flex-grow">
-                                   <p className="text-sm font-bold text-white">{activity.title}</p>
-                                   <p className="text-xs text-slate-400">{activity.port} • ${activity.price}</p>
-                                </div>
-                                <button 
-                                   onClick={() => toggleSave({...activity, type: 'activity'})}
-                                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${isSaved ? 'bg-teal-500/20 border-teal-500 text-teal-400' : 'border-slate-600 text-slate-400 hover:border-white hover:text-white'}`}
-                                >
-                                   {isSaved ? 'Added' : 'Add'}
-                                </button>
-                             </div>
-                          );
-                       })}
-                    </div>
-                 </div>
-
-              </div>
+              )}
            </div>
         )}
 
@@ -541,6 +685,9 @@ export default function CruiseExplorer() {
 
       {/* --- Drawers --- */}
       <ListDrawer isOpen={showList} onClose={() => setShowList(false)} savedItems={savedItems} onRemove={(id) => setSavedItems(savedItems.filter(i => i.id !== id))} onEmail={handleEmail} />
+      
+      {/* --- Detail Modal --- */}
+      {viewingCruise && <DetailModal cruise={viewingCruise} brand={CRUISE_LINES.find(b => b.id === viewingCruise.lineId)} activities={activities} onClose={() => setViewingCruise(null)} onSave={toggleSave} isSaved={!!savedItems.find(c => c.id === viewingCruise.id)} onSaveActivity={toggleSave} savedActivityIds={savedItems.map(i => i.id)} />}
 
     </div>
   );
