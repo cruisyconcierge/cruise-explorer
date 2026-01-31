@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Palmtree,
   ArrowLeft,
+  Search,
   Menu,
   Mail,
   Globe,
@@ -453,7 +454,10 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails 
                     <div className="flex-grow">
                       <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
                       <p className="text-xs text-slate-500">{item.ship}</p>
-                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline mt-1 block">Check Availability &rarr;</a>
+                      <div className="flex gap-2 mt-1">
+                        <button onClick={() => onDetails(item)} className="text-xs font-bold text-slate-500 hover:text-slate-700">Details</button>
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">Check Availability &rarr;</a>
+                      </div>
                     </div>
                     <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                   </div>
@@ -525,6 +529,7 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails 
 export default function CruiseApp() {
   const [activeTab, setActiveTab] = useState('explore');
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Data
   const [cruises, setCruises] = useState([]);
@@ -563,13 +568,17 @@ export default function CruiseApp() {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
 
+            // Split ports by comma OR newline, handle potential carriage returns or HTML breaks
+            // Priority: 'ports_csv' (ACF) > 'ports_of_call' (ACF)
             const rawPorts = p.acf?.ports_csv || p.acf?.ports_of_call || '';
             const cleanPorts = rawPorts.replace(/<br\s*\/?>/gi, '\n');
             const portsList = cleanPorts.split(/\r\n|\r|\n|,/).map(s => s.trim()).filter(s => s.length > 0);
 
+            // Fetch 'port_keywords' for smart matching if available
             const rawKeywords = p.acf?.port_keywords || '';
             const keywordsList = rawKeywords.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
+            // Improved Duration/Nights Parsing
             const title = p.title.rendered;
             const nightsMatch = title.match(/(\d+)[\s-]*Night/i);
             const nights = nightsMatch ? parseInt(nightsMatch[1]) : (p.acf?.nights || 7);
@@ -590,7 +599,7 @@ export default function CruiseApp() {
               vibe: p.acf?.travel_vibe,
               rating: p.acf?.rating,
               amazonJson: p.acf?.amazon_json ? JSON.parse(p.acf.amazon_json) : [],
-              qrCode: p.acf?.qr_code || null
+              qrCode: p.acf?.qr_code || null // URL to QR Code image for printing
             };
           }));
         }
