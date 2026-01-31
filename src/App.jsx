@@ -15,7 +15,6 @@ import {
   ArrowRight,
   Palmtree,
   ArrowLeft,
-  Search,
   Menu,
   Mail,
   Globe,
@@ -23,7 +22,8 @@ import {
   Play,
   Clock,
   Heart,
-  Printer
+  Printer,
+  Info
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -54,20 +54,6 @@ const CRUISE_LINES = [
 const HERO_IMAGE_URL = "https://images.pexels.com/photos/4092994/pexels-photo-4092994.jpeg?auto=compress&cs=tinysrgb&w=1600";
 // Stock Ocean Image for Detail View (High Quality)
 const DETAIL_FALLBACK_IMAGE = "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&q=80&w=1200";
-
-const MOCK_ITINERARIES = [
-  { id: 101, lineId: 'virgin', title: 'Dominican Daze', nights: 5, port: 'Miami', season: 'Year Round', price: 1450, ship: 'Scarlet Lady', regions: ['Caribbean'], image: '🌴', description: 'Escape to the Caribbean on an adults-only voyage.', itinerary: ['Miami', 'Sea Day', 'Puerto Plata', 'Sea Day', 'Bimini', 'Miami'], affiliateLink: '#' },
-];
-
-const MOCK_ESSENTIALS = [
-  { id: 'e1', title: 'Waterproof Phone Pouch', price: '9.99', image: '📱', realImage: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&q=80&w=200', link: '#' },
-  { id: 'e2', title: 'Magnetic Hooks (Heavy Duty)', price: '12.99', image: '🧲', link: '#' },
-];
-
-const MOCK_ACTIVITIES = [
-  { id: 'a1', title: 'Blue Lagoon Island Beach Day', port: 'Nassau', price: 89, image: '🏝️', realImage: 'https://images.unsplash.com/photo-1544550581-5f7ceaf7f992?auto=format&fit=crop&q=80&w=200', link: '#' },
-  { id: 'a2', title: 'Mayan Ruins Excursion', port: 'Cozumel', price: 120, image: '🏛️', realImage: 'https://images.unsplash.com/photo-1518638151313-982e9085816b?auto=format&fit=crop&q=80&w=200', link: '#' },
-];
 
 // --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
@@ -225,7 +211,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
 
         <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-900">
           {/* Always use high quality stock image for detail header for better aesthetic */}
-          <img src={DETAIL_FALLBACK_IMAGE} alt={item.title} className="w-full h-full object-cover opacity-90" />
+          <img src={item.realImage || DETAIL_FALLBACK_IMAGE} alt={item.title} className="w-full h-full object-cover opacity-90" />
           
           {/* Brand Color Overlay & Blur */}
           <div className="absolute inset-0 bg-[#34a4b8]/30 backdrop-blur-[2px]"></div>
@@ -239,7 +225,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
             
             <div className="flex gap-3 mt-4">
               <a href={item.link} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 bg-white text-slate-900 rounded-xl font-bold text-center text-sm hover:bg-slate-100 transition-colors shadow-lg flex items-center justify-center">
-                View Deal <ExternalLink className="w-3 h-3 inline ml-1" />
+                Check Availability <ExternalLink className="w-3 h-3 inline ml-1" />
               </a>
               <button 
                 onClick={() => onSave(item)} 
@@ -252,6 +238,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
         </div>
 
         <div className="w-full md:w-7/12 flex flex-col bg-white h-full overflow-hidden">
+          {/* Tabs */}
           {type === 'cruise' && (
             <div className="flex border-b border-slate-100 overflow-x-auto hide-scrollbar">
                {[
@@ -276,6 +263,23 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
 
           <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
             
+            {type === 'activity' && (
+              <div className="animate-fade-in">
+                 <div className="flex items-center justify-between mb-4">
+                    <span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-black uppercase tracking-wide border border-teal-100">{item.port}</span>
+                    <span className="font-bold text-slate-900 text-lg">${item.price}</span>
+                 </div>
+                 
+                 <h3 className="font-russo text-2xl text-slate-900 mb-2">{item.title}</h3>
+                 <p className="text-sm text-slate-500 font-bold mb-6 flex items-center gap-2">
+                    {item.category && <span>{item.category}</span>}
+                    {item.duration && <span>• {item.duration}</span>}
+                 </p>
+                 
+                 <div className="prose prose-sm text-slate-600 mb-8" dangerouslySetInnerHTML={{ __html: item.description || 'No description available for this experience.' }}></div>
+              </div>
+            )}
+
             {type === 'cruise' && (
               <>
                 {activeTab === 'overview' && (
@@ -339,7 +343,7 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                      {relevantActivities.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                            {relevantActivities.map(act => (
-                              <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
+                              <div key={act.id} className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
                                  <div className="flex justify-between items-start">
                                     <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0 border border-teal-100 overflow-hidden">
                                        {act.realImage ? <img src={act.realImage} className="w-full h-full object-cover" /> : act.image || '🎟️'}
@@ -356,9 +360,9 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                                  </div>
                                  <div className="mt-auto pt-2 border-t border-slate-50 flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-700">${act.price}</span>
-                                    <span className="text-[10px] font-bold text-teal-600 hover:underline flex items-center gap-1">Book <ExternalLink className="w-3 h-3" /></span>
+                                    <a href={act.link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-teal-600 hover:underline flex items-center gap-1">Check Availability <ExternalLink className="w-3 h-3" /></a>
                                  </div>
-                              </a>
+                              </div>
                            ))}
                         </div>
                      ) : (
@@ -411,12 +415,116 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
   );
 };
 
+// --- LIST DRAWER ---
+const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails }) => {
+  const cruises = savedItems.filter(i => i.type === 'cruise');
+  const activities = savedItems.filter(i => i.type === 'activity');
+  const essentials = savedItems.filter(i => i.type === 'essential');
+
+  return (
+    <div className={`fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
+        <div>
+          <h2 className="font-russo text-2xl">My Voyage List</h2>
+          <p className="text-xs text-slate-400">Save now, book later.</p>
+        </div>
+        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {savedItems.length === 0 && (
+          <div className="text-center py-10 opacity-50 flex flex-col items-center">
+            <Anchor className="w-12 h-12 mb-2 text-teal-500" />
+            <p>Your list is empty.</p>
+            <p className="text-sm">Start exploring to add items!</p>
+          </div>
+        )}
+
+        {cruises.length > 0 && (
+          <div>
+            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><Ship className="w-4 h-4" /> Voyages</h3>
+            <div className="space-y-3">
+              {cruises.map(item => (
+                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group">
+                  <div className="flex gap-3">
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm overflow-hidden">
+                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
+                    </div>
+                    <div className="flex-grow">
+                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
+                      <p className="text-xs text-slate-500">{item.ship}</p>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline mt-1 block">Check Availability &rarr;</a>
+                    </div>
+                    <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activities.length > 0 && (
+          <div>
+            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><Palmtree className="w-4 h-4" /> Experiences</h3>
+            <div className="space-y-3">
+              {activities.map(item => (
+                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
+                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden">
+                      {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
+                   </div>
+                   <div className="flex-grow">
+                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
+                      <p className="text-xs text-slate-500">{item.port} • ${item.price}</p>
+                      <div className="flex gap-2 mt-1">
+                        <button onClick={() => onDetails(item)} className="text-xs font-bold text-slate-500 hover:text-slate-700">Details</button>
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">Check Availability</a>
+                      </div>
+                   </div>
+                   <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {essentials.length > 0 && (
+          <div>
+            <h3 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Essentials</h3>
+            <div className="space-y-3">
+              {essentials.map(item => (
+                <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
+                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden">
+                      {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
+                   </div>
+                   <div className="flex-grow">
+                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs font-bold text-slate-500">${item.price}</span>
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] uppercase font-bold text-orange-500 hover:underline">Buy on Amazon</a>
+                      </div>
+                   </div>
+                   <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t border-slate-100 bg-slate-50">
+        <button onClick={onEmail} className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+           <Mail className="w-4 h-4" /> Email My List
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 
 export default function CruiseApp() {
   const [activeTab, setActiveTab] = useState('explore');
   const [selectedBrand, setSelectedBrand] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
   
   // Data
   const [cruises, setCruises] = useState([]);
@@ -455,16 +563,13 @@ export default function CruiseApp() {
                 imgUrl = p._embedded['wp:featuredmedia'][0].source_url;
             }
 
-            // Split ports by comma OR newline, handle potential carriage returns or HTML breaks
             const rawPorts = p.acf?.ports_csv || p.acf?.ports_of_call || '';
             const cleanPorts = rawPorts.replace(/<br\s*\/?>/gi, '\n');
             const portsList = cleanPorts.split(/\r\n|\r|\n|,/).map(s => s.trim()).filter(s => s.length > 0);
 
-            // Fetch 'port_keywords' for smart matching if available
             const rawKeywords = p.acf?.port_keywords || '';
             const keywordsList = rawKeywords.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
-            // Improved Duration/Nights Parsing
             const title = p.title.rendered;
             const nightsMatch = title.match(/(\d+)[\s-]*Night/i);
             const nights = nightsMatch ? parseInt(nightsMatch[1]) : (p.acf?.nights || 7);
@@ -485,7 +590,7 @@ export default function CruiseApp() {
               vibe: p.acf?.travel_vibe,
               rating: p.acf?.rating,
               amazonJson: p.acf?.amazon_json ? JSON.parse(p.acf.amazon_json) : [],
-              qrCode: p.acf?.qr_code || null // URL to QR Code image for printing
+              qrCode: p.acf?.qr_code || null
             };
           }));
         }
@@ -542,7 +647,8 @@ export default function CruiseApp() {
               link: post.acf?.booking_url || post.link, 
               category: post.acf?.category,
               duration: post.acf?.duration,
-              qrCode: post.acf?.qr_code || null
+              qrCode: post.acf?.qr_code || null,
+              description: post.content?.rendered || ''
             };
           }));
         }
@@ -571,13 +677,11 @@ export default function CruiseApp() {
     const body = savedItems.map(i => `${i.title} - ${i.type === 'cruise' ? i.ship : '$'+i.price}`).join('\n');
     window.location.href = `mailto:?subject=My Cruisy List&body=${encodeURIComponent(body)}`;
   };
+  
+  const [showList, setShowList] = useState(false);
 
   const filteredCruises = cruises.filter(c => {
     if (selectedBrand && c.lineId !== selectedBrand.id) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return c.title.toLowerCase().includes(q) || c.ship.toLowerCase().includes(q);
-    }
     return true;
   });
 
@@ -646,18 +750,6 @@ export default function CruiseApp() {
                          {brand.name}
                       </button>
                    ))}
-                </div>
-
-                {/* Search */}
-                <div className="relative mb-8">
-                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                   <input 
-                     type="text" 
-                     placeholder="Search ships, destinations..." 
-                     className="w-full pl-12 pr-4 py-3 bg-white rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#34a4b8] transition-all font-roboto"
-                     value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
-                   />
                 </div>
 
                 {/* Loading State */}
@@ -768,7 +860,7 @@ export default function CruiseApp() {
                                 <h4 className="font-bold text-slate-800 truncate font-roboto">{item.title}</h4>
                                 <p className="text-xs text-slate-500 uppercase font-roboto">{item.type}</p>
                              </div>
-                             <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline font-roboto">View</a>
+                             <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline font-roboto">Check Availability</a>
                              <button onClick={() => toggleSave(item)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                           </div>
                        ))}
@@ -850,7 +942,7 @@ export default function CruiseApp() {
                   <div className="grid grid-cols-1 gap-4">
                      {savedItems.filter(i => i.type === 'activity').map(item => (
                         <div key={item.id} className="flex border border-slate-200 rounded-xl p-4 gap-6 break-inside-avoid bg-white">
-                           <div className="w-24 h-24 bg-teal-50 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 border border-teal-100 overflow-hidden">
+                           <div className="w-24 h-24 bg-teal-50 rounded-lg flex items-center justify-center text-4xl flex-shrink-0 border border-teal-100 overflow-hidden">
                                {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image || '🌴'}
                            </div>
                            <div className="flex-grow">
@@ -904,6 +996,15 @@ export default function CruiseApp() {
              </div>
          </div>
       </div>
+
+      <ListDrawer 
+        isOpen={showList} 
+        onClose={() => setShowList(false)} 
+        savedItems={savedItems} 
+        onRemove={(id) => setSavedItems(savedItems.filter(i => i.id !== id))} 
+        onEmail={handleEmail}
+        onDetails={(item) => setSelectedItem(item)}
+      />
 
     </div>
   );
