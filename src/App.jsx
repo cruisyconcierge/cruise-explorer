@@ -448,18 +448,31 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails 
               {cruises.map(item => (
                 <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group">
                   <div className="flex gap-3">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm overflow-hidden">
+                    <div 
+                      onClick={() => onDetails(item)}
+                      className="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80"
+                    >
                        {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
                     </div>
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
-                      <p className="text-xs text-slate-500">{item.ship}</p>
-                      <div className="flex gap-2 mt-1">
-                        <button onClick={() => onDetails(item)} className="text-xs font-bold text-slate-500 hover:text-slate-700">Details</button>
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">Check Availability &rarr;</a>
+                    <div className="flex-grow min-w-0">
+                      <h4 
+                        onClick={() => onDetails(item)}
+                        className="font-bold text-slate-800 text-sm leading-tight cursor-pointer hover:text-teal-600 truncate"
+                      >
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 truncate">{item.ship}</p>
+                      <div className="flex gap-2 mt-2 items-center">
+                         <button 
+                           onClick={() => onDetails(item)} 
+                           className="text-[10px] font-bold bg-white border border-slate-200 px-2 py-1 rounded-md text-slate-600 hover:bg-slate-100 transition-colors"
+                         >
+                           Details
+                         </button>
+                         <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-[#34a4b8] hover:underline">Check Availability</a>
                       </div>
                     </div>
-                    <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500 self-start"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}
@@ -473,15 +486,23 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails 
             <div className="space-y-3">
               {activities.map(item => (
                 <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden">
+                   <div 
+                     onClick={() => onDetails(item)}
+                     className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden flex-shrink-0 cursor-pointer"
+                   >
                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
                    </div>
-                   <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
+                   <div className="flex-grow min-w-0">
+                      <h4 
+                        onClick={() => onDetails(item)}
+                        className="font-bold text-slate-800 text-sm leading-tight cursor-pointer hover:text-teal-600 truncate"
+                      >
+                        {item.title}
+                      </h4>
                       <p className="text-xs text-slate-500">{item.port} • ${item.price}</p>
                       <div className="flex gap-2 mt-1">
-                        <button onClick={() => onDetails(item)} className="text-xs font-bold text-slate-500 hover:text-slate-700">Details</button>
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-[#34a4b8] hover:underline">Check Availability</a>
+                        <button onClick={() => onDetails(item)} className="text-[10px] font-bold text-slate-500 hover:text-slate-700">Details</button>
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-[#34a4b8] hover:underline">Check Availability</a>
                       </div>
                    </div>
                    <button onClick={() => onRemove(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
@@ -497,11 +518,19 @@ const ListDrawer = ({ isOpen, onClose, savedItems, onRemove, onEmail, onDetails 
             <div className="space-y-3">
               {essentials.map(item => (
                 <div key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative group flex items-center gap-3">
-                   <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden">
+                   <div 
+                     onClick={() => onDetails(item)}
+                     className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl shadow-sm overflow-hidden flex-shrink-0 cursor-pointer"
+                   >
                       {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image}
                    </div>
-                   <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-sm leading-tight">{item.title}</h4>
+                   <div className="flex-grow min-w-0">
+                      <h4 
+                        onClick={() => onDetails(item)}
+                        className="font-bold text-slate-800 text-sm leading-tight cursor-pointer hover:text-teal-600 truncate"
+                      >
+                        {item.title}
+                      </h4>
                       <div className="flex justify-between items-center mt-1">
                         <span className="text-xs font-bold text-slate-500">${item.price}</span>
                         <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-[10px] uppercase font-bold text-orange-500 hover:underline">Buy on Amazon</a>
