@@ -55,6 +55,20 @@ const HERO_IMAGE_URL = "https://images.pexels.com/photos/4092994/pexels-photo-40
 // Stock Ocean Image for Detail View (High Quality)
 const DETAIL_FALLBACK_IMAGE = "https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&q=80&w=1200";
 
+const MOCK_ITINERARIES = [
+  { id: 101, lineId: 'virgin', title: 'Dominican Daze', nights: 5, port: 'Miami', season: 'Year Round', price: 1450, ship: 'Scarlet Lady', regions: ['Caribbean'], image: '🌴', description: 'Escape to the Caribbean on an adults-only voyage.', itinerary: ['Miami', 'Sea Day', 'Puerto Plata', 'Sea Day', 'Bimini', 'Miami'], affiliateLink: '#' },
+];
+
+const MOCK_ESSENTIALS = [
+  { id: 'e1', title: 'Waterproof Phone Pouch', price: '9.99', image: '📱', realImage: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&q=80&w=200', link: '#' },
+  { id: 'e2', title: 'Magnetic Hooks (Heavy Duty)', price: '12.99', image: '🧲', link: '#' },
+];
+
+const MOCK_ACTIVITIES = [
+  { id: 'a1', title: 'Blue Lagoon Island Beach Day', port: 'Nassau', price: 89, image: '🏝️', realImage: 'https://images.unsplash.com/photo-1544550581-5f7ceaf7f992?auto=format&fit=crop&q=80&w=200', link: '#' },
+  { id: 'a2', title: 'Mayan Ruins Excursion', port: 'Cozumel', price: 120, image: '🏛️', realImage: 'https://images.unsplash.com/photo-1518638151313-982e9085816b?auto=format&fit=crop&q=80&w=200', link: '#' },
+];
+
 // --- HELPER FUNCTIONS ---
 const getLineId = (name) => {
   if (!name) return 'other';
@@ -210,8 +224,13 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
         <button onClick={onClose} className="absolute top-4 right-4 z-30 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"><X className="w-5 h-5" /></button>
 
         <div className="w-full md:w-5/12 h-64 md:h-auto relative bg-slate-900">
+          {/* Always use high quality stock image for detail header for better aesthetic */}
           <img src={DETAIL_FALLBACK_IMAGE} alt={item.title} className="w-full h-full object-cover opacity-90" />
+          
+          {/* Brand Color Overlay & Blur */}
           <div className="absolute inset-0 bg-[#34a4b8]/30 backdrop-blur-[2px]"></div>
+          
+          {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
           
           <div className="absolute bottom-0 left-0 w-full p-6 text-white">
@@ -322,7 +341,9 @@ const DetailModal = ({ item, type, onClose, onSave, isSaved, activities }) => {
                            {relevantActivities.map(act => (
                               <a key={act.id} href={act.link} target="_blank" rel="noopener noreferrer" className="bg-white p-3 rounded-xl border border-slate-200 hover:shadow-md transition-all flex flex-col gap-2 group">
                                  <div className="flex justify-between items-start">
-                                    <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                                    <div className="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0 border border-teal-100 overflow-hidden">
+                                       {act.realImage ? <img src={act.realImage} className="w-full h-full object-cover" /> : act.image || '🎟️'}
+                                    </div>
                                     <span className="text-xs font-black uppercase text-teal-600 tracking-wide bg-teal-50 px-2 py-1 rounded">{act.port}</span>
                                  </div>
                                  <div className="min-w-0">
@@ -435,7 +456,6 @@ export default function CruiseApp() {
             }
 
             // Split ports by comma OR newline, handle potential carriage returns or HTML breaks
-            // Priority: 'ports_csv' (ACF) > 'ports_of_call' (ACF)
             const rawPorts = p.acf?.ports_csv || p.acf?.ports_of_call || '';
             const cleanPorts = rawPorts.replace(/<br\s*\/?>/gi, '\n');
             const portsList = cleanPorts.split(/\r\n|\r|\n|,/).map(s => s.trim()).filter(s => s.length > 0);
@@ -444,7 +464,7 @@ export default function CruiseApp() {
             const rawKeywords = p.acf?.port_keywords || '';
             const keywordsList = rawKeywords.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
 
-            // Improved Duration/Nights Parsing: Handle "X Night" and "X-Night"
+            // Improved Duration/Nights Parsing
             const title = p.title.rendered;
             const nightsMatch = title.match(/(\d+)[\s-]*Night/i);
             const nights = nightsMatch ? parseInt(nightsMatch[1]) : (p.acf?.nights || 7);
@@ -484,6 +504,7 @@ export default function CruiseApp() {
                 price: formatPrice(p.acf?.price),
                 link: p.acf?.affiliate_link || '#',
                 realImage: imgUrl,
+                image: '🛍️',
                 qrCode: p.acf?.qr_code || null
              };
           }));
@@ -504,6 +525,11 @@ export default function CruiseApp() {
                 else if (lowerTitle.includes('honolulu')) portName = 'Honolulu';
                 else portName = 'Destination'; 
             }
+            
+            let imgUrl = null;
+            if (post._embedded?.['wp:featuredmedia']?.[0]?.source_url) {
+                imgUrl = post._embedded['wp:featuredmedia'][0].source_url;
+            }
 
             return {
               id: post.id,
@@ -511,7 +537,8 @@ export default function CruiseApp() {
               title: post.title.rendered,
               port: portName,
               price: formatPrice(post.acf?.price),
-              image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || null,
+              realImage: imgUrl,
+              image: '🌴',
               link: post.acf?.booking_url || post.link, 
               category: post.acf?.category,
               duration: post.acf?.duration,
@@ -660,7 +687,7 @@ export default function CruiseApp() {
                                         onClick={(e) => { e.stopPropagation(); toggleSave(cruise); }}
                                         className={`p-2 rounded-full backdrop-blur-md shadow-sm transition-colors ${isSaved ? 'bg-[#34a4b8] text-white' : 'bg-white/90 text-slate-400 hover:text-[#34a4b8]'}`}
                                      >
-                                        {isSaved ? <Check className="w-4 h-4" /> : <ListPlus className="w-4 h-4" />}
+                                        <Heart className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
                                      </button>
                                   </div>
                                   {brand && <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/50 backdrop-blur-md rounded text-[10px] font-bold text-white uppercase font-roboto">{brand.name}</div>}
@@ -703,7 +730,7 @@ export default function CruiseApp() {
                                 onClick={(e) => { e.stopPropagation(); toggleSave(item); }}
                                 className={`absolute top-2 right-2 p-1.5 rounded-full z-10 transition-colors ${isSaved ? 'bg-[#34a4b8] text-white' : 'bg-slate-200 text-slate-400 hover:bg-slate-300'}`}
                              >
-                                {isSaved ? <Check className="w-3 h-3" /> : <ListPlus className="w-3 h-3" />}
+                                <Heart className={`w-3 h-3 ${isSaved ? 'fill-current' : ''}`} />
                              </button>
                           </div>
                           <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 mb-2 min-h-[2.5em] font-roboto">{item.title}</h4>
@@ -823,8 +850,8 @@ export default function CruiseApp() {
                   <div className="grid grid-cols-1 gap-4">
                      {savedItems.filter(i => i.type === 'activity').map(item => (
                         <div key={item.id} className="flex border border-slate-200 rounded-xl p-4 gap-6 break-inside-avoid bg-white">
-                           <div className="w-24 h-24 bg-teal-50 rounded-lg flex items-center justify-center text-4xl flex-shrink-0 border border-teal-100">
-                               {item.image || '🌴'}
+                           <div className="w-24 h-24 bg-teal-50 rounded-lg flex items-center justify-center text-2xl flex-shrink-0 border border-teal-100 overflow-hidden">
+                               {item.realImage ? <img src={item.realImage} className="w-full h-full object-cover" /> : item.image || '🌴'}
                            </div>
                            <div className="flex-grow">
                               <h3 className="font-russo text-lg text-slate-900 mb-1">{item.title}</h3>
